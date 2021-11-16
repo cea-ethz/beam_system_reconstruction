@@ -18,7 +18,6 @@ from BIM_Geometry import Beam, BeamSystemLayer
 
 # Compare to walls
 # Make basic material judgement
-# Decide Splits
 # Detect columns
 
 
@@ -39,6 +38,9 @@ bin_width = 50
 beam_layers = []
 
 DG = nx.DiGraph()
+
+show_histogram = False
+show_dag = True
 
 
 def set_up_vector(vis):
@@ -64,9 +66,6 @@ def get_slice(pc, aabb, axis, position, width, normalized=False):
     bb = o3d.geometry.AxisAlignedBoundingBox(new_min, new_max)
     pc_slice = pc.crop(bb)
     return pc_slice
-
-
-
 
 
 def get_peak_slice_params(hist, peak, diff=0.1):
@@ -99,25 +98,18 @@ def get_peak_slice_params(hist, peak, diff=0.1):
 def analyze_z_levels(pc, aabb):
     points = np.asarray(pc.points)
 
-    z_bins = math.ceil(aabb.get_extent()[2] / bin_width)
+    bin_count_z = math.ceil(aabb.get_extent()[2] / bin_width)
 
-    hist_z, bin_edges = np.histogram(points[:, 2], z_bins)
+    hist_z, bin_edges = np.histogram(points[:, 2], bin_count_z)
     hist_z, hist_z_smooth = util_histogram.process_histogram(hist_z)
     mean_z = np.mean(hist_z_smooth)
 
     peaks, properties = signal.find_peaks(hist_z_smooth, width=1, prominence=0.1)
 
-    px = 1 / plt.rcParams['figure.dpi']  # pixel in inches
-    fig, axs = plt.subplots(3, 3, figsize=(1920*px, 1080*px))
-    bar_list_z_smooth = axs[0, 0].bar(range(len(hist_z_smooth)), hist_z_smooth, color=color_back, width=1)
-    bar_list_z = axs[0, 0].bar(range(len(hist_z)), hist_z, color=color_front, width=1)
-    axs[0, 0].axhline(mean_z, color='orange')
+    bar_list_z_smooth = axs[0].bar(range(len(hist_z_smooth)), hist_z_smooth, color=color_back, width=1)
+    bar_list_z = axs[0].bar(range(len(hist_z)), hist_z, color=color_front, width=1)
+    axs[0].axhline(mean_z, color='orange')
 
-    axs[0, 1].axis('off')
-    #axs[0, 2].axis('off')
-    plt.setp(axs[0, 0], ylabel='Z Axis')
-    plt.setp(axs[1, 0], ylabel='X Axis')
-    plt.setp(axs[2, 0], ylabel='Y Axis')
 
     for i, peak in enumerate(peaks):
         # Highlight peaks in Z-plot
@@ -128,38 +120,50 @@ def analyze_z_levels(pc, aabb):
         peak_slice_position, peak_slice_width = get_peak_slice_params(hist_z_smooth, peak, 0.1)
 
         # Get slice at Z height
-        pc_slice = get_slice(pc, aabb, 2, peak_slice_position / z_bins, peak_slice_width / z_bins, normalized=True)
+        pc_slice = get_slice(pc, aabb, 2, peak_slice_position / bin_count_z, peak_slice_width / bin_count_z, normalized=True)
         pc_slice_aabb = pc_slice.get_axis_aligned_bounding_box()
-        slice_points = np.asarray(pc_slice.points)
+        analyze_z_level(pc_slice,pc_slice_aabb)
 
-        rel_height = 0.75  # Check the width near the bottom of the peak
-        prominence = 0.13  # Experimentally tuned, this should be determined more exactly
-        peak_width = 4
-        # Take histogram along X axis
-        bin_count_x = math.ceil(pc_slice_aabb.get_extent()[0] / bin_width)
-        #print("Bin Count X : {}".format(bin_count_x))
-        hist_x, _ = np.histogram(slice_points[:, 0], bin_count_x)
-        hist_x, hist_x_smooth = util_histogram.process_histogram(hist_x)
-        mean_x = np.mean(hist_x_smooth)
-        peaks_x, _ = signal.find_peaks(hist_x_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
 
-        # Take histogram along Y Axis
-        bin_count_y = math.ceil(pc_slice_aabb.get_extent()[1] / bin_width)
-        #print("Bin Count Y : {}".format(bin_count_y))
-        hist_y, _ = np.histogram(slice_points[:, 1], bin_count_y)
-        hist_y, hist_y_smooth = util_histogram.process_histogram(hist_y)
-        mean_y = np.mean(hist_y_smooth)
-        peaks_y, _ = signal.find_peaks(hist_y_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
+def analyze_z_level(pc, aabb):
+    slice_points = np.asarray(pc.points)
+
+    rel_height = 0.75  # Check the width near the bottom of the peak
+    prominence = 0.13  # Experimentally tuned, this should be determined more exactly
+    peak_width = 4
+    # Take histogram along X axis
+    bin_count_x = math.ceil(aabb.get_extent()[0] / bin_width)
+    # print("Bin Count X : {}".format(bin_count_x))
+    hist_x, _ = np.histogram(slice_points[:, 0], bin_count_x)
+    hist_x, hist_x_smooth = util_histogram.process_histogram(hist_x)
+    mean_x = np.mean(hist_x_smooth)
+    peaks_x, _ = signal.find_peaks(hist_x_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
+
+    # Take histogram along Y Axis
+    bin_count_y = math.ceil(aabb.get_extent()[1] / bin_width)
+    # print("Bin Count Y : {}".format(bin_count_y))
+    hist_y, _ = np.histogram(slice_points[:, 1], bin_count_y)
+    hist_y, hist_y_smooth = util_histogram.process_histogram(hist_y)
+    mean_y = np.mean(hist_y_smooth)
+    peaks_y, _ = signal.find_peaks(hist_y_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
+
+    # Calculate variance on each axis
+    variance_x = np.var(hist_x)
+    variance_y = np.var(hist_y)
+
+    # print("Peak : {}, Variance X : {}, Variance Y : {}".format(peak, variance_x, variance_y))
+    #
+    if variance_x < variance_split or variance_y < variance_split:
 
         # Plot X axis histogram and mean
-        bar_list_x_smooth = axs[1, i].bar(range(len(hist_x_smooth)), hist_x_smooth, color=color_back, width=1)
-        bar_list_x = axs[1, i].bar(range(len(hist_x)), hist_x, width=1)
-        axs[1, i].axhline(mean_x, color='orange')
+        bar_list_x_smooth = axs[1].bar(range(len(hist_x_smooth)), hist_x_smooth, color=color_back, width=1)
+        bar_list_x = axs[1].bar(range(len(hist_x)), hist_x, width=1)
+        axs[1].axhline(mean_x, color='orange')
 
         # Plot Y axis histogram and mean
-        bar_list_y_smooth = axs[2, i].bar(range(len(hist_y_smooth)), hist_y_smooth, color=color_back, width=1)
-        bar_list_y = axs[2, i].bar(range(len(hist_y)), hist_y, width=1)
-        axs[2, i].axhline(mean_y, color='orange')
+        bar_list_y_smooth = axs[2].bar(range(len(hist_y_smooth)), hist_y_smooth, color=color_back, width=1)
+        bar_list_y = axs[2].bar(range(len(hist_y)), hist_y, width=1)
+        axs[2].axhline(mean_y, color='orange')
 
         # Highlight peaks in X and Y histograms
         for peak_x in peaks_x:
@@ -169,16 +173,9 @@ def analyze_z_levels(pc, aabb):
             bar_list_y_smooth[peak_y].set_color(color_back_highlight)
             bar_list_y[peak_y].set_color(color_front_highlight)
 
-        # Calculate variance on each axis
-        variance_x = np.var(hist_x)
-        variance_y = np.var(hist_y)
-
-        print("Peak : {}, Variance X : {}, Variance Y : {}".format(peak, variance_x, variance_y))
-
-        if variance_x < variance_split or variance_y < variance_split:
-            o3d.io.write_point_cloud(dir_output + filename + "_grid_{}.ply".format(peak), pc_slice)
-            analyze_beam_system(pc_slice, pc_slice_aabb, 0, hist_x_smooth, peaks_x, bin_count_x)
-            analyze_beam_system(pc_slice, pc_slice_aabb, 1, hist_y_smooth, peaks_y, bin_count_y)
+        #o3d.io.write_point_cloud(dir_output + filename + "_grid_{}.ply".format(peak), pc_slice)
+        analyze_beam_system(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x)
+        analyze_beam_system(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y)
 
 
 def analyze_beam_system(pc, aabb, axis, hist, peaks, source_bin_count):
@@ -315,9 +312,22 @@ if __name__ == '__main__':
     mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1000, origin=[0, 0, 0])
     vis.add_geometry(mesh_frame)
 
+    px = 1 / plt.rcParams['figure.dpi']  # pixel in inches
+    fig, axs = plt.subplots(1, 3, figsize=(1800*px, 600*px))
+    plt.tight_layout(h_pad=3.0)
+    plt.subplots_adjust(left=0.05,bottom=0.10)
+
+    plt.setp(axs[0], ylabel="Normalized Point Density")
+    plt.setp(axs[0], xlabel='Z Axis Bins')
+    plt.setp(axs[1], xlabel='X Axis Bins')
+    plt.setp(axs[2], xlabel='Y Axis Bins')
+
     analyze_z_levels(cloud, aabb_main)
     plt.savefig(dir_output + filename + "_plot.png")
-    plt.show()
+    if show_histogram:
+        plt.show()
+    else:
+        plt.clf()
 
     if len(beam_layers) > 2:
         print("Error : Handling more than 2 beam layers not yet implemented")
@@ -354,8 +364,10 @@ if __name__ == '__main__':
     labels = nx.get_node_attributes(DG,'stream')
     nx.draw(DG, pos, labels=labels, with_labels=True,node_size=300)
     plt.savefig(dir_output + filename + "_graph.png")
-    plt.show()
-
+    if show_dag:
+        plt.show()
+    else:
+        plt.clf()
     vis.remove_geometry(cloud)
 
     vis.run()
