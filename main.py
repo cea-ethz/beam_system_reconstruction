@@ -11,6 +11,7 @@ import time
 from matplotlib import pyplot as plt
 from tkinter import filedialog
 
+import util_graph
 import util_histogram
 
 from BIM_Geometry import Beam, BeamSystemLayer
@@ -275,22 +276,6 @@ def analyze_beam_connections(primary_layer, secondary_layer):
             DG.nodes[sb.id]['layer'] = 1
 
 
-def get_stream_counts(dg, nid):
-    upstream = [n for n in nx.traversal.bfs_tree(dg, nid, reverse=True) if n != nid]
-    downstream = [n for n in nx.traversal.bfs_tree(dg, nid) if n != nid]
-    return len(upstream), len(downstream)
-
-
-def get_node_id(dg,outer_id):
-    return list(dg.nodes).index(outer_id)
-
-
-def get_edge_id(dg,a,b):
-    for i, edge in enumerate(dg.edges):
-        if edge[0] == a and edge[1] == b:
-            return i
-    return None
-
 
 # === MAIN SCRIPT ===
 
@@ -311,17 +296,21 @@ if __name__ == '__main__':
 
     vis = setup_vis()
 
+    # Load cloud from file
     cloud = o3d.io.read_point_cloud(filepath)
     print(cloud)
-    vis.add_geometry(cloud)
+    #vis.add_geometry(cloud)
 
+    # Calculate aabb for main cloud
     aabb_main = cloud.get_axis_aligned_bounding_box()
     aabb_main.color = (1, 0, 0)
-    vis.add_geometry(aabb_main)
+    #vis.add_geometry(aabb_main)
 
+    # Add coordinate system to scene
     mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1000, origin=[0, 0, 0])
     vis.add_geometry(mesh_frame)
 
+    # Setup histogram diagram
     px = 1 / plt.rcParams['figure.dpi']  # pixel in inches
     fig, axs = plt.subplots(1, 3, figsize=(1800*px, 600*px))
     plt.tight_layout(h_pad=3.0)
@@ -333,12 +322,14 @@ if __name__ == '__main__':
     plt.setp(axs[2], xlabel='Y Axis Bins')
 
     analyze_z_levels(cloud, aabb_main)
+
     plt.savefig(dir_output + filename + "_plot.png")
     if show_histogram:
         plt.show()
     else:
         plt.clf()
 
+    # Split beams and add final forms to vis
     if len(beam_layers) > 2:
         print("Error : Handling more than 2 beam layers not yet implemented")
     primary_id = int(beam_layers[0].mean_spacing < beam_layers[1].mean_spacing)
@@ -351,48 +342,53 @@ if __name__ == '__main__':
         vis.add_geometry(beam.cloud)
         vis.add_geometry(beam.aabb)
 
+    # === Construct DAG Diagram ===
     analyze_beam_connections(beam_layers[primary_id], secondary)
 
+    # Rescale smaller layers for visibility
     pos = nx.multipartite_layout(DG, 'layer')
     for i, pb in enumerate(beam_layers[primary_id].beams):
         n = 1.0 * i / (len(beam_layers[primary_id].beams) - 1)
         pos[pb.id][1] = n * 2 - 1
 
-    # Calculate downstream
+    # Calculate downstream counts
     for beam in beam_layers[primary_id].beams:
         if beam.id not in DG.nodes:
             continue
-        upstream, downstream = get_stream_counts(DG, beam.id)
+        upstream, downstream = util_graph.get_stream_counts(DG, beam.id)
         DG.nodes[beam.id]['stream'] = upstream
 
     for beam in secondary.beams:
         if beam.id not in DG.nodes:
             continue
-        upstream, downstream = get_stream_counts(DG, beam.id)
+        upstream, downstream = util_graph.get_stream_counts(DG, beam.id)
         DG.nodes[beam.id]['stream'] = upstream
 
+    # Highlight model elements for example
     secondary.beams[7].aabb.color = (1, 0, 0)
     beam_layers[primary_id].beams[1].aabb.color = (1, 0, 0)
 
+    # Generate beam labels from downstream counts
     labels = nx.get_node_attributes(DG, 'stream')
 
+    # Highlight example nodes and edges
     secondary_node_id = secondary.beams[7].id
     primary_node_id = beam_layers[primary_id].beams[1].id
     # column_node_id =
 
     node_colors = ['blue'] * len(DG.nodes)
-    node_colors[get_node_id(DG, secondary_node_id)] = 'red'
-    node_colors[get_node_id(DG, primary_node_id)] = 'red'
+    node_colors[util_graph.get_node_id(DG, secondary_node_id)] = 'red'
+    node_colors[util_graph.get_node_id(DG, primary_node_id)] = 'red'
 
     edge_colors = ['black'] * len(DG.edges)
-    edge_colors[get_edge_id(DG, secondary_node_id, primary_node_id)] = 'red'
+    edge_colors[util_graph.get_edge_id(DG, secondary_node_id, primary_node_id)] = 'red'
+
     nx.draw(DG, pos, node_color=node_colors, edge_color=edge_colors, labels=labels, with_labels=True, node_size=300)
     plt.savefig(dir_output + filename + "_graph.png")
     if show_dag:
         plt.show()
     else:
         plt.clf()
-    vis.remove_geometry(cloud)
 
     vis.run()
     vis.destroy_window()
