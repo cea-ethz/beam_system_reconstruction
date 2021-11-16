@@ -12,12 +12,12 @@ class Collision:
         return (self.a == other.a and self.b == other.b) or (self.a == other.b and self.b == other.a)
 
 
-class BeamSystemLayer():
+class BeamSystemLayer:
     def __init__(self):
         self.beams = []
         self.mean_spacing = -1
 
-    def add_beam(self,beam):
+    def add_beam(self, beam):
         self.beams.append(beam)
 
     def finalize(self):

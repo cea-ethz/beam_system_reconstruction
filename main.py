@@ -11,7 +11,10 @@ import time
 from matplotlib import pyplot as plt
 from tkinter import filedialog
 
-from BIM_Geometry import Beam,BeamSystemLayer
+import util_histogram
+
+from BIM_Geometry import Beam, BeamSystemLayer
+
 
 # Compare to walls
 # Make basic material judgement
@@ -37,6 +40,7 @@ beam_layers = []
 
 DG = nx.DiGraph()
 
+
 def set_up_vector(vis):
     vis.get_view_control().set_up((0.001, 0.001, 0.9999))
 
@@ -56,40 +60,13 @@ def get_slice(pc, aabb, axis, position, width, normalized=False):
 
     new_min[axis] = position - (width / 2)
     new_max[axis] = position + (width / 2)
-    #print(axis)
-    #print(position)
-    #print(width)
-    #print(new_min)
-    #print(new_max)
+
     bb = o3d.geometry.AxisAlignedBoundingBox(new_min, new_max)
     pc_slice = pc.crop(bb)
     return pc_slice
 
 
-def smooth_histogram(hist, extension=1):
-    """ugly for now but meh"""
-    hist_copy = np.copy(hist)
-    for i in range(len(hist)):
-        hist[i] = 0
-        for j in range(-extension, extension + 1):
-            new_i = i + j
-            if new_i < 0 or new_i >= len(hist):
-                continue
-            hist[i] += hist_copy[new_i]
-    return hist
 
-
-def normalize_histogram(hist):
-    hist = hist.astype('float')
-    hist /= np.max(hist)
-    return hist
-
-
-def process_histogram(hist):
-    hist_smooth = smooth_histogram(np.copy(hist),extension=2)
-    hist_smooth = normalize_histogram(hist_smooth)
-    hist = normalize_histogram(hist)
-    return hist, hist_smooth
 
 
 def get_peak_slice_params(hist, peak, diff=0.1):
@@ -103,9 +80,7 @@ def get_peak_slice_params(hist, peak, diff=0.1):
     low = peak
     high = peak+1
 
-    #print("Peak : {}".format(peak))
-
-    for i in range(low - 1,-1,-1):
+    for i in range(low - 1, -1, -1):
         if hist[peak] - hist[i] < diff:
             low = i
         else:
@@ -127,7 +102,7 @@ def analyze_z_levels(pc, aabb):
     z_bins = math.ceil(aabb.get_extent()[2] / bin_width)
 
     hist_z, bin_edges = np.histogram(points[:, 2], z_bins)
-    hist_z, hist_z_smooth = process_histogram(hist_z)
+    hist_z, hist_z_smooth = util_histogram.process_histogram(hist_z)
     mean_z = np.mean(hist_z_smooth)
 
     peaks, properties = signal.find_peaks(hist_z_smooth, width=1, prominence=0.1)
@@ -144,14 +119,11 @@ def analyze_z_levels(pc, aabb):
     plt.setp(axs[1, 0], ylabel='X Axis')
     plt.setp(axs[2, 0], ylabel='Y Axis')
 
-    #print("Peaks : {}".format(peaks))
-
     for i, peak in enumerate(peaks):
-
         # Highlight peaks in Z-plot
         bar_list_z_smooth[peak].set_color(color_back_highlight)
         bar_list_z[peak].set_color(color_front_highlight)
-        #continue
+
         # Get extents of peak
         peak_slice_position, peak_slice_width = get_peak_slice_params(hist_z_smooth, peak, 0.1)
 
@@ -160,14 +132,14 @@ def analyze_z_levels(pc, aabb):
         pc_slice_aabb = pc_slice.get_axis_aligned_bounding_box()
         slice_points = np.asarray(pc_slice.points)
 
-        rel_height = 0.75 # Check the width near the bottom of the peak
-        prominence = 0.13 # Experimentally tuned, this should be determined more exactly
+        rel_height = 0.75  # Check the width near the bottom of the peak
+        prominence = 0.13  # Experimentally tuned, this should be determined more exactly
         peak_width = 4
         # Take histogram along X axis
         bin_count_x = math.ceil(pc_slice_aabb.get_extent()[0] / bin_width)
         #print("Bin Count X : {}".format(bin_count_x))
         hist_x, _ = np.histogram(slice_points[:, 0], bin_count_x)
-        hist_x, hist_x_smooth = process_histogram(hist_x)
+        hist_x, hist_x_smooth = util_histogram.process_histogram(hist_x)
         mean_x = np.mean(hist_x_smooth)
         peaks_x, _ = signal.find_peaks(hist_x_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
 
@@ -175,7 +147,7 @@ def analyze_z_levels(pc, aabb):
         bin_count_y = math.ceil(pc_slice_aabb.get_extent()[1] / bin_width)
         #print("Bin Count Y : {}".format(bin_count_y))
         hist_y, _ = np.histogram(slice_points[:, 1], bin_count_y)
-        hist_y, hist_y_smooth = process_histogram(hist_y)
+        hist_y, hist_y_smooth = util_histogram.process_histogram(hist_y)
         mean_y = np.mean(hist_y_smooth)
         peaks_y, _ = signal.find_peaks(hist_y_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
 
@@ -201,14 +173,12 @@ def analyze_z_levels(pc, aabb):
         variance_x = np.var(hist_x)
         variance_y = np.var(hist_y)
 
-        print("Peak : {}, Variance X : {}, Variance Y : {}".format(peak,variance_x,variance_y))
+        print("Peak : {}, Variance X : {}, Variance Y : {}".format(peak, variance_x, variance_y))
 
         if variance_x < variance_split or variance_y < variance_split:
             o3d.io.write_point_cloud(dir_output + filename + "_grid_{}.ply".format(peak), pc_slice)
-            analyze_beam_system(pc_slice, pc_slice_aabb, 0, hist_x_smooth, peaks_x,bin_count_x)
-            analyze_beam_system(pc_slice, pc_slice_aabb, 1, hist_y_smooth, peaks_y,bin_count_y)
-
-
+            analyze_beam_system(pc_slice, pc_slice_aabb, 0, hist_x_smooth, peaks_x, bin_count_x)
+            analyze_beam_system(pc_slice, pc_slice_aabb, 1, hist_y_smooth, peaks_y, bin_count_y)
 
 
 def analyze_beam_system(pc, aabb, axis, hist, peaks, source_bin_count):
@@ -228,7 +198,7 @@ def analyze_beam_system(pc, aabb, axis, hist, peaks, source_bin_count):
         #print("Bin Count : {}".format(bin_count))
 
         beam_hist, _ = np.histogram(beam_slice_points[:, not_axis], bin_count)
-        beam_hist = smooth_histogram(beam_hist, 1)
+        beam_hist = util_histogram.smooth_histogram(beam_hist, 1)
 
         # Count out from the median value
         median = np.median(beam_slice_points[:, not_axis])
@@ -292,8 +262,6 @@ def perform_beam_splits(primary_layer, secondary_layer):
             new_secondary.add_beam(sb)
     print(new_secondary.beams)
     return new_secondary
-
-
 
 
 def analyze_beam_connections(primary_layer,secondary_layer):
@@ -384,10 +352,9 @@ if __name__ == '__main__':
         DG.nodes[beam.id]['stream'] = upstream
 
     labels = nx.get_node_attributes(DG,'stream')
-    nx.draw(DG, pos,labels=labels, with_labels=True)
+    nx.draw(DG, pos, labels=labels, with_labels=True,node_size=300)
     plt.savefig(dir_output + filename + "_graph.png")
     plt.show()
-
 
     vis.remove_geometry(cloud)
 
