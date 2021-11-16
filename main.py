@@ -110,7 +110,6 @@ def analyze_z_levels(pc, aabb):
     bar_list_z = axs[0].bar(range(len(hist_z)), hist_z, color=color_front, width=1)
     axs[0].axhline(mean_z, color='orange')
 
-
     for i, peak in enumerate(peaks):
         # Highlight peaks in Z-plot
         bar_list_z_smooth[peak].set_color(color_back_highlight)
@@ -122,7 +121,7 @@ def analyze_z_levels(pc, aabb):
         # Get slice at Z height
         pc_slice = get_slice(pc, aabb, 2, peak_slice_position / bin_count_z, peak_slice_width / bin_count_z, normalized=True)
         pc_slice_aabb = pc_slice.get_axis_aligned_bounding_box()
-        analyze_z_level(pc_slice,pc_slice_aabb)
+        analyze_z_level(pc_slice, pc_slice_aabb)
 
 
 def analyze_z_level(pc, aabb):
@@ -219,7 +218,7 @@ def analyze_beam_system(pc, aabb, axis, hist, peaks, source_bin_count):
 
         beam_slice = get_slice(beam_slice, beam_aabb, int(not axis), slice_position / bin_count, slice_width / bin_count, normalized=True)
         beam_aabb = beam_slice.get_axis_aligned_bounding_box()
-        beam_aabb.color = (0, 1, 1) if axis else (1, 0, 1)
+        #beam_aabb.color = (0, 1, 1) if axis else (1, 0, 1)
 
         beam_layers[-1].add_beam(Beam(beam_aabb, axis, beam_slice))
         #vis.add_geometry(beam_slice)
@@ -257,11 +256,10 @@ def perform_beam_splits(primary_layer, secondary_layer):
                     break
         if not flag:
             new_secondary.add_beam(sb)
-    print(new_secondary.beams)
     return new_secondary
 
 
-def analyze_beam_connections(primary_layer,secondary_layer):
+def analyze_beam_connections(primary_layer, secondary_layer):
     # Create edges
     for sb in secondary_layer.beams:
         for pb in primary_layer.beams:
@@ -277,10 +275,22 @@ def analyze_beam_connections(primary_layer,secondary_layer):
             DG.nodes[sb.id]['layer'] = 1
 
 
-def get_stream_counts(dg, id):
-    upstream = [n for n in nx.traversal.bfs_tree(dg, id, reverse=True) if n != id]
-    downstream = [n for n in nx.traversal.bfs_tree(dg, id) if n != id]
+def get_stream_counts(dg, nid):
+    upstream = [n for n in nx.traversal.bfs_tree(dg, nid, reverse=True) if n != nid]
+    downstream = [n for n in nx.traversal.bfs_tree(dg, nid) if n != nid]
     return len(upstream), len(downstream)
+
+
+def get_node_id(dg,outer_id):
+    return list(dg.nodes).index(outer_id)
+
+
+def get_edge_id(dg,a,b):
+    for i, edge in enumerate(dg.edges):
+        if edge[0] == a and edge[1] == b:
+            return i
+    return None
+
 
 # === MAIN SCRIPT ===
 
@@ -341,10 +351,10 @@ if __name__ == '__main__':
         vis.add_geometry(beam.cloud)
         vis.add_geometry(beam.aabb)
 
-    analyze_beam_connections(beam_layers[primary_id],secondary)
+    analyze_beam_connections(beam_layers[primary_id], secondary)
 
     pos = nx.multipartite_layout(DG, 'layer')
-    for i,pb in enumerate(beam_layers[primary_id].beams):
+    for i, pb in enumerate(beam_layers[primary_id].beams):
         n = 1.0 * i / (len(beam_layers[primary_id].beams) - 1)
         pos[pb.id][1] = n * 2 - 1
 
@@ -352,17 +362,31 @@ if __name__ == '__main__':
     for beam in beam_layers[primary_id].beams:
         if beam.id not in DG.nodes:
             continue
-        upstream, downstream = get_stream_counts(DG,beam.id)
+        upstream, downstream = get_stream_counts(DG, beam.id)
         DG.nodes[beam.id]['stream'] = upstream
 
     for beam in secondary.beams:
         if beam.id not in DG.nodes:
             continue
-        upstream, downstream = get_stream_counts(DG,beam.id)
+        upstream, downstream = get_stream_counts(DG, beam.id)
         DG.nodes[beam.id]['stream'] = upstream
 
-    labels = nx.get_node_attributes(DG,'stream')
-    nx.draw(DG, pos, labels=labels, with_labels=True,node_size=300)
+    secondary.beams[7].aabb.color = (1, 0, 0)
+    beam_layers[primary_id].beams[1].aabb.color = (1, 0, 0)
+
+    labels = nx.get_node_attributes(DG, 'stream')
+
+    secondary_node_id = secondary.beams[7].id
+    primary_node_id = beam_layers[primary_id].beams[1].id
+    # column_node_id =
+
+    node_colors = ['blue'] * len(DG.nodes)
+    node_colors[get_node_id(DG, secondary_node_id)] = 'red'
+    node_colors[get_node_id(DG, primary_node_id)] = 'red'
+
+    edge_colors = ['black'] * len(DG.edges)
+    edge_colors[get_edge_id(DG, secondary_node_id, primary_node_id)] = 'red'
+    nx.draw(DG, pos, node_color=node_colors, edge_color=edge_colors, labels=labels, with_labels=True, node_size=300)
     plt.savefig(dir_output + filename + "_graph.png")
     if show_dag:
         plt.show()
