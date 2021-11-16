@@ -256,7 +256,7 @@ def analyze_beam_system(pc, aabb, axis, hist, peaks, source_bin_count):
 
         beam_layers[-1].add_beam(Beam(beam_aabb, axis, beam_slice))
         #vis.add_geometry(beam_slice)
-        vis.add_geometry(beam_aabb)
+        #vis.add_geometry(beam_aabb)
     beam_layers[-1].finalize()
 
 
@@ -273,19 +273,24 @@ def setup_vis():
 def perform_beam_splits(primary_layer, secondary_layer):
     # Perhaps we need to check for actual intersection first but for now theres no issues
     new_secondary = BeamSystemLayer()
-    for sb in secondary_layer.beams:
+    while len(secondary_layer.beams) > 0:
+        sb = secondary_layer.beams.pop()
+        flag = False
         for pb in primary_layer.beams:
             location = sb.get_point_param(pb.aabb.get_center())
             if 0 < location < sb.length:
                 if 0.1 < location < (sb.length - 0.1):
+                    flag = True
                     new_a, new_b = sb.split(location)
-                    new_secondary.add_beam(new_a)
-                    new_secondary.add_beam(new_b)
-                    if sb in new_secondary.beams:
-                        print("deleted")
-                        new_secondary.beams.remove(sb)
-                else:
-                    new_secondary.add_beam(sb)
+                    if new_a.length > 500:
+                        secondary_layer.beams.append(new_a)
+                    if new_b.length > 500:
+                        secondary_layer.beams.append(new_b)
+
+                    break
+        if not flag:
+            new_secondary.add_beam(sb)
+    print(new_secondary.beams)
     return new_secondary
 
 
@@ -307,6 +312,10 @@ def analyze_beam_connections(primary_layer,secondary_layer):
             DG.nodes[sb.id]['layer'] = 1
 
 
+def get_stream_counts(dg, id):
+    upstream = [n for n in nx.traversal.bfs_tree(dg, id, reverse=True) if n != id]
+    downstream = [n for n in nx.traversal.bfs_tree(dg, id) if n != id]
+    return len(upstream), len(downstream)
 
 # === MAIN SCRIPT ===
 
@@ -347,6 +356,9 @@ if __name__ == '__main__':
     primary_id = int(beam_layers[0].mean_spacing < beam_layers[1].mean_spacing)
     secondary = perform_beam_splits(beam_layers[primary_id], beam_layers[int(not primary_id)])
 
+    for beam in beam_layers[primary_id].beams:
+        vis.add_geometry(beam.cloud)
+        vis.add_geometry(beam.aabb)
     for beam in secondary.beams:
         vis.add_geometry(beam.cloud)
         vis.add_geometry(beam.aabb)
@@ -354,8 +366,26 @@ if __name__ == '__main__':
     analyze_beam_connections(beam_layers[primary_id],secondary)
 
     pos = nx.multipartite_layout(DG, 'layer')
-    nx.draw(DG, pos, with_labels=True)
+    for i,pb in enumerate(beam_layers[primary_id].beams):
+        n = 1.0 * i / (len(beam_layers[primary_id].beams) - 1)
+        pos[pb.id][1] = n * 2 - 1
 
+    # Calculate downstream
+    for beam in beam_layers[primary_id].beams:
+        if beam.id not in DG.nodes:
+            continue
+        upstream, downstream = get_stream_counts(DG,beam.id)
+        DG.nodes[beam.id]['stream'] = upstream
+
+    for beam in secondary.beams:
+        if beam.id not in DG.nodes:
+            continue
+        upstream, downstream = get_stream_counts(DG,beam.id)
+        DG.nodes[beam.id]['stream'] = upstream
+
+    labels = nx.get_node_attributes(DG,'stream')
+    nx.draw(DG, pos,labels=labels, with_labels=True)
+    plt.savefig(dir_output + filename + "_graph.png")
     plt.show()
 
 
