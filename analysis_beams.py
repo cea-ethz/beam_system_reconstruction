@@ -49,12 +49,12 @@ def detect_beams(pc, aabb, axs=None):
         # Get slice at Z height
         pc_slice = util_cloud.get_slice(pc, aabb, 2, peak_slice_position / bin_count_z, peak_slice_width / bin_count_z, normalized=True)
         pc_slice_aabb = pc_slice.get_axis_aligned_bounding_box()
-        analyze_z_level(pc_slice, pc_slice_aabb, axs)
+        _analyze_z_level(pc_slice, pc_slice_aabb, axs)
 
     return beam_layers
 
 
-def analyze_z_level(pc, aabb,axs=None):
+def _analyze_z_level(pc, aabb, axs=None):
     slice_points = np.asarray(pc.points)
 
     rel_height = 0.75  # Check the width near the bottom of the peak
@@ -103,11 +103,11 @@ def analyze_z_level(pc, aabb,axs=None):
             bar_list_y[peak_y].set_color(color_front_highlight)
 
         #o3d.io.write_point_cloud(dir_output + filename + "_grid_{}.ply".format(0), pc)
-        analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x)
-        analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y)
+        _analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x)
+        _analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y)
 
 
-def analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
+def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
     not_axis = int(not axis)
     beam_layers.append(BeamSystemLayer())
     for peak in peaks:
