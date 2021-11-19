@@ -59,11 +59,20 @@ def setup_vis():
 def main():
     global vis
 
-    filepath = filedialog.askopenfilename(initialdir=os.getcwd(), title="Choose Input Cloud")
+    # Load last cloud location from settings if applicable
+    initial_dirname = os.getcwd()
+    with shelve.open("settings") as db:
+        if 'initial_dirname' in db:
+            initial_dirname = db['initial_dirname']
+
+    filepath = filedialog.askopenfilename(initialdir=initial_dirname, title="Choose Input Cloud")
     dirname = os.path.dirname(filepath) + "/"
     basename = os.path.basename(filepath)
     filename = os.path.splitext(basename)[0]
     dir_output = dirname + filename + "/"
+
+    with shelve.open("settings") as db:
+        db['initial_dirname'] = dirname
 
     if not os.path.exists(dir_output):
         os.makedirs(dir_output)
