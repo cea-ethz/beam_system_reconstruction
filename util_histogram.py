@@ -4,6 +4,11 @@ Utilities for processing histogram data
 
 import numpy as np
 
+color_back = 'gray'
+color_back_highlight = 'cyan'
+color_front = 'C0'
+color_front_highlight = 'cyan'
+
 
 def smooth_histogram(hist, extension=1):
     """Apply simple smoothing by setting each each histogram value to the total of its neighborhood"""
@@ -33,6 +38,7 @@ def process_histogram(hist):
     hist = normalize_histogram(hist)
     return hist, hist_smooth
 
+
 def get_peak_slice_params(hist, peak, diff=0.1):
     """
     Given a peak, return the slice parameters to stay within [diff] of that peak (may not be centered at the peak)
@@ -41,7 +47,7 @@ def get_peak_slice_params(hist, peak, diff=0.1):
     :param diff:
     :return:
     """
-    low = peak
+    low = peak-1
     high = peak+1
 
     for i in range(low - 1, -1, -1):
@@ -49,7 +55,7 @@ def get_peak_slice_params(hist, peak, diff=0.1):
             low = i
         else:
             break
-    for i in range(low + 1, len(hist)):
+    for i in range(low+1, len(hist)): # TK should this be high instead of low+1? Borks things when tried but maybe...
         if hist[peak] - hist[i] < diff:
             high = i
         else:
@@ -58,3 +64,14 @@ def get_peak_slice_params(hist, peak, diff=0.1):
     width = high - low
     position = width / 2 + low
     return position, width
+
+
+def render_bar(ax, hist_a, hist_b, peaks):
+    bar_list_b = ax.bar(range(len(hist_b)), hist_b, color=color_back, width=1)
+    bar_list_a = ax.bar(range(len(hist_a)), hist_a, color=color_front, width=1)
+    mean_b = np.mean(hist_b)
+    ax.axhline(mean_b, color='orange')
+
+    for peak in peaks:
+        bar_list_b[peak].set_color(color_back_highlight)
+        bar_list_a[peak].set_color(color_front_highlight)

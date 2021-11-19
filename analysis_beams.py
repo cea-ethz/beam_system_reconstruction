@@ -7,15 +7,11 @@ import util_cloud
 import util_histogram
 
 from BIM_Geometry import Beam, BeamSystemLayer
+from util_histogram import color_back, color_front, color_front_highlight, color_back_highlight
 
 
 # Intended bin size in mm
 bin_width = 50
-
-color_back = 'gray'
-color_back_highlight = 'cyan'
-color_front = 'C0'
-color_front_highlight = 'cyan'
 
 variance_split = 0.075
 
@@ -28,22 +24,15 @@ def detect_beams(pc, aabb, axs=None):
 
     hist_z, bin_edges = np.histogram(points[:, 2], bin_count_z)
     hist_z, hist_z_smooth = util_histogram.process_histogram(hist_z)
-    mean_z = np.mean(hist_z_smooth)
 
     peaks, properties = signal.find_peaks(hist_z_smooth, width=1, prominence=0.1)
 
-    bar_list_z_smooth = axs[0].bar(range(len(hist_z_smooth)), hist_z_smooth, color=color_back, width=1)
-    bar_list_z = axs[0].bar(range(len(hist_z)), hist_z, color=color_front, width=1)
-    axs[0].axhline(mean_z, color='orange')
+    util_histogram.render_bar(axs[0, 0], hist_z, hist_z_smooth, peaks)
 
     beam_layers = []
     column_slice_positions = []
 
     for i, peak in enumerate(peaks):
-        # Highlight peaks in Z-plot
-        bar_list_z_smooth[peak].set_color(color_back_highlight)
-        bar_list_z[peak].set_color(color_front_highlight)
-
         # Get extents of peak
         peak_slice_position, peak_slice_width = util_histogram.get_peak_slice_params(hist_z_smooth, peak, 0.1)
 
@@ -90,23 +79,9 @@ def _analyze_z_level(pc, aabb, axs=None):
     beam_layers = []
     if variance_x < variance_split or variance_y < variance_split:
 
-        # Plot X axis histogram and mean
-        bar_list_x_smooth = axs[1].bar(range(len(hist_x_smooth)), hist_x_smooth, color=color_back, width=1)
-        bar_list_x = axs[1].bar(range(len(hist_x)), hist_x, width=1)
-        axs[1].axhline(mean_x, color='orange')
-
-        # Plot Y axis histogram and mean
-        bar_list_y_smooth = axs[2].bar(range(len(hist_y_smooth)), hist_y_smooth, color=color_back, width=1)
-        bar_list_y = axs[2].bar(range(len(hist_y)), hist_y, width=1)
-        axs[2].axhline(mean_y, color='orange')
-
-        # Highlight peaks in X and Y histograms
-        for peak_x in peaks_x:
-            bar_list_x_smooth[peak_x].set_color(color_back_highlight)
-            bar_list_x[peak_x].set_color(color_front_highlight)
-        for peak_y in peaks_y:
-            bar_list_y_smooth[peak_y].set_color(color_back_highlight)
-            bar_list_y[peak_y].set_color(color_front_highlight)
+        # Plot X and Y histograms
+        util_histogram.render_bar(axs[1, 1], hist_x, hist_x_smooth, peaks_x)
+        util_histogram.render_bar(axs[1, 2], hist_y, hist_y_smooth, peaks_y)
 
         #o3d.io.write_point_cloud(dir_output + filename + "_grid_{}.ply".format(0), pc)
         beam_layers.append(_analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x))

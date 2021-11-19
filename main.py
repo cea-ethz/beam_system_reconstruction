@@ -12,6 +12,7 @@ from matplotlib import pyplot as plt
 from tkinter import filedialog
 
 import analysis_beams
+import analysis_walls
 
 import util_graph
 import util_histogram
@@ -32,7 +33,7 @@ aabb_main = None
 
 DG = nx.DiGraph()
 
-show_histogram = False
+show_histogram = True
 show_dag = False
 do_highlighting = False
 show_splits = True
@@ -43,7 +44,7 @@ vis = None
 
 def set_up_vector(vis):
     vis.get_view_control().set_up((0.001, 0.000, 0.9999))
-    vis.get_view_control().set_up((-1, 0.000, 0.0))
+    #vis.get_view_control().set_up((-1, 0.000, 0.0))
 
 
 def setup_vis():
@@ -99,19 +100,29 @@ def main():
 
     # Setup histogram diagram
     px = 1 / plt.rcParams['figure.dpi']  # pixel in inches
-    fig, axs = plt.subplots(1, 3, figsize=(1800*px, 600*px))
+    fig, axs = plt.subplots(2, 3, figsize=(1800*px, 1200*px))
     plt.tight_layout(h_pad=3.0)
     plt.subplots_adjust(left=0.05,bottom=0.10)
 
-    plt.setp(axs[0], ylabel="Normalized Point Density")
-    plt.setp(axs[0], xlabel='Z Axis Bins')
-    plt.setp(axs[1], xlabel='X Axis Bins')
-    plt.setp(axs[2], xlabel='Y Axis Bins')
+    plt.setp(axs[0, 0], ylabel="Normalized Point Density")
+    plt.setp(axs[0, 0], xlabel='Z Axis Bins')
+    plt.setp(axs[0, 1], xlabel='X Axis Bins')
+    plt.setp(axs[0, 2], xlabel='Y Axis Bins')
 
-    beam_layers, columns_slice_positions = analysis_beams.detect_beams(cloud, aabb_main, axs)
+    plt.setp(axs[1, 0], ylabel="Normalized Point Density")
+    plt.setp(axs[1, 1], xlabel='X Axis Bins')
+    plt.setp(axs[1, 2], xlabel='Y Axis Bins')
 
-    print(columns_slice_positions)
+    # Check for walls
+    cloud = analysis_walls.analyze_walls(cloud, aabb_main, axs, vis)
+    #vis.add_geometry(cloud)
 
+    # Perform main beam analysis
+    beam_layers, column_slice_positions = analysis_beams.detect_beams(cloud, aabb_main, axs)
+
+    print(column_slice_positions)
+
+    # Finalize the histogram plots
     plt.savefig(dir_output + filename + "_plot.png")
     if show_histogram:
         plt.show()
@@ -123,7 +134,7 @@ def main():
         print("Error : Handling more than 2 beam layers not yet implemented")
     primary_id = int(beam_layers[0].mean_spacing < beam_layers[1].mean_spacing)
 
-    secondary = analysis_beams.perform_beam_splits(beam_layers[primary_id], beam_layers[int(not primary_id)],vis)
+    secondary = analysis_beams.perform_beam_splits(beam_layers[primary_id], beam_layers[int(not primary_id)], vis)
 
     for beam in beam_layers[primary_id].beams:
         vis.add_geometry(beam.cloud)
@@ -131,6 +142,14 @@ def main():
     for beam in secondary.beams:
         vis.add_geometry(beam.cloud)
         vis.add_geometry(beam.aabb)
+
+    # Perform main column analysis
+
+    for column_slice_position in column_slice_positions:
+        pc_column = util_cloud.get_slice(cloud, aabb_main, 2, column_slice_position, 1000, normalized=False)
+        aabb_column = pc_column.get_axis_aligned_bounding_box()
+        vis.add_geometry(pc_column)
+        vis.add_geometry(aabb_column)
 
 
     # === Construct DAG Diagram ===

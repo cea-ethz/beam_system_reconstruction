@@ -1,6 +1,7 @@
 import numpy as np
 import open3d as o3d
 
+
 def get_slice(pc, aabb, axis, position, width, normalized=False):
     min_main = aabb.get_min_bound()
     max_main = aabb.get_max_bound()
@@ -20,3 +21,42 @@ def get_slice(pc, aabb, axis, position, width, normalized=False):
     bb = o3d.geometry.AxisAlignedBoundingBox(new_min, new_max)
     pc_slice = pc.crop(bb)
     return pc_slice
+
+
+def split_slice(pc, aabb, axis, position, width, normalized=False):
+    min_main = aabb.get_min_bound()
+    max_main = aabb.get_max_bound()
+
+    bb_range = max_main - min_main
+
+    if normalized:
+        position = (bb_range[axis] * position) + min_main[axis]
+        width = bb_range[axis] * width
+
+    min_a = np.copy(min_main)
+    max_a = np.copy(max_main)
+
+    min_b = np.copy(min_main)
+    max_b = np.copy(max_main)
+
+    min_c = np.copy(min_main)
+    max_c = np.copy(max_main)
+
+    max_a[axis] = position - (width / 2)
+
+    min_b[axis] = position - (width / 2)
+    max_b[axis] = position + (width / 2)
+
+    min_c[axis] = position + (width / 2)
+
+    bb_a = o3d.geometry.AxisAlignedBoundingBox(min_a, max_a)
+    bb_b = o3d.geometry.AxisAlignedBoundingBox(min_b, max_b)
+    bb_c = o3d.geometry.AxisAlignedBoundingBox(min_c, max_c)
+
+    slice_a = pc.crop(bb_a)
+    slice_b = pc.crop(bb_b)
+    slice_c = pc.crop(bb_c)
+
+    slice_a += slice_c
+
+    return slice_b, slice_a
