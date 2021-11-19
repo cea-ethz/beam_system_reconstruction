@@ -20,8 +20,6 @@ color_front_highlight = 'cyan'
 variance_split = 0.075
 
 #TK refactor this out of global
-beam_layers = []
-
 
 def detect_beams(pc, aabb, axs=None):
     points = np.asarray(pc.points)
@@ -38,6 +36,8 @@ def detect_beams(pc, aabb, axs=None):
     bar_list_z = axs[0].bar(range(len(hist_z)), hist_z, color=color_front, width=1)
     axs[0].axhline(mean_z, color='orange')
 
+    beam_layers = []
+
     for i, peak in enumerate(peaks):
         # Highlight peaks in Z-plot
         bar_list_z_smooth[peak].set_color(color_back_highlight)
@@ -49,7 +49,7 @@ def detect_beams(pc, aabb, axs=None):
         # Get slice at Z height
         pc_slice = util_cloud.get_slice(pc, aabb, 2, peak_slice_position / bin_count_z, peak_slice_width / bin_count_z, normalized=True)
         pc_slice_aabb = pc_slice.get_axis_aligned_bounding_box()
-        _analyze_z_level(pc_slice, pc_slice_aabb, axs)
+        beam_layers += _analyze_z_level(pc_slice, pc_slice_aabb, axs)
 
     return beam_layers
 
@@ -82,6 +82,7 @@ def _analyze_z_level(pc, aabb, axs=None):
 
     # print("Peak : {}, Variance X : {}, Variance Y : {}".format(peak, variance_x, variance_y))
     #
+    beam_layers = []
     if variance_x < variance_split or variance_y < variance_split:
 
         # Plot X axis histogram and mean
@@ -103,13 +104,16 @@ def _analyze_z_level(pc, aabb, axs=None):
             bar_list_y[peak_y].set_color(color_front_highlight)
 
         #o3d.io.write_point_cloud(dir_output + filename + "_grid_{}.ply".format(0), pc)
-        _analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x)
-        _analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y)
+        beam_layers.append(_analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x))
+        beam_layers.append(_analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y))
+    return beam_layers
 
 
 def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
     not_axis = int(not axis)
-    beam_layers.append(BeamSystemLayer())
+
+    layer = BeamSystemLayer()
+
     for peak in peaks:
         slice_position, slice_width = util_histogram.get_peak_slice_params(hist, peak, 0.1)
         #print("beam!")
@@ -150,10 +154,11 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
         beam_aabb = beam_slice.get_axis_aligned_bounding_box()
         #beam_aabb.color = (0, 1, 1) if axis else (1, 0, 1)
 
-        beam_layers[-1].add_beam(Beam(beam_aabb, axis, beam_slice))
+        layer.add_beam(Beam(beam_aabb, axis, beam_slice))
         #vis.add_geometry(beam_slice)
         #vis.add_geometry(beam_aabb)
-    beam_layers[-1].finalize()
+    layer.finalize()
+    return layer
 
 
 def perform_beam_splits(primary_layer, secondary_layer, vis=None):
