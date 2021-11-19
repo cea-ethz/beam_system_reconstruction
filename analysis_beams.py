@@ -37,6 +37,7 @@ def detect_beams(pc, aabb, axs=None):
     axs[0].axhline(mean_z, color='orange')
 
     beam_layers = []
+    column_slice_positions = []
 
     for i, peak in enumerate(peaks):
         # Highlight peaks in Z-plot
@@ -51,7 +52,11 @@ def detect_beams(pc, aabb, axs=None):
         pc_slice_aabb = pc_slice.get_axis_aligned_bounding_box()
         beam_layers += _analyze_z_level(pc_slice, pc_slice_aabb, axs)
 
-    return beam_layers
+        # If the peak is a beam system, record the real position 1 meter below the slice to start analyzing for columns
+        if len(beam_layers):
+            column_slice_positions.append(bin_edges[peak] - 1000)
+
+    return beam_layers, column_slice_positions
 
 
 def _analyze_z_level(pc, aabb, axs=None):

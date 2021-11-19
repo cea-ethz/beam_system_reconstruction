@@ -108,7 +108,9 @@ def main():
     plt.setp(axs[1], xlabel='X Axis Bins')
     plt.setp(axs[2], xlabel='Y Axis Bins')
 
-    beam_layers = analysis_beams.detect_beams(cloud, aabb_main, axs)
+    beam_layers, columns_slice_positions = analysis_beams.detect_beams(cloud, aabb_main, axs)
+
+    print(columns_slice_positions)
 
     plt.savefig(dir_output + filename + "_plot.png")
     if show_histogram:
