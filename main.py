@@ -13,6 +13,7 @@ from tkinter import filedialog
 
 import util_graph
 import util_histogram
+import util_cloud
 
 from BIM_Geometry import Beam, BeamSystemLayer
 
@@ -41,59 +42,24 @@ beam_layers = []
 DG = nx.DiGraph()
 
 show_histogram = False
-show_dag = True
+show_dag = False
+do_highlighting = False
+show_splits = True
+show_short_beams = True
 
 
 def set_up_vector(vis):
-    vis.get_view_control().set_up((0.001, 0.001, 0.9999))
+    vis.get_view_control().set_up((0.001, 0.000, 0.9999))
+    vis.get_view_control().set_up((-1, 0.000, 0.0))
 
+def setup_vis():
+    vis = o3d.visualization.VisualizerWithKeyCallback()
+    #vis.register_key_callback(83, save_view)
+    vis.register_key_callback(69, set_up_vector)
+    vis.create_window()
+    vis.get_render_option().point_size = 1
 
-def get_slice(pc, aabb, axis, position, width, normalized=False):
-    min_main = aabb.get_min_bound()
-    max_main = aabb.get_max_bound()
-
-    bb_range = max_main - min_main
-
-    if normalized:
-        position = (bb_range[axis] * position) + min_main[axis]
-        width = bb_range[axis] * width
-
-    new_min = np.copy(min_main)
-    new_max = np.copy(max_main)
-
-    new_min[axis] = position - (width / 2)
-    new_max[axis] = position + (width / 2)
-
-    bb = o3d.geometry.AxisAlignedBoundingBox(new_min, new_max)
-    pc_slice = pc.crop(bb)
-    return pc_slice
-
-
-def get_peak_slice_params(hist, peak, diff=0.1):
-    """
-    Given a peak, return the slice parameters to stay within [diff] of that peak (may not be centered at the peak)
-    :param hist:
-    :param peak:
-    :param diff:
-    :return:
-    """
-    low = peak
-    high = peak+1
-
-    for i in range(low - 1, -1, -1):
-        if hist[peak] - hist[i] < diff:
-            low = i
-        else:
-            break
-    for i in range(low + 1, len(hist)):
-        if hist[peak] - hist[i] < diff:
-            high = i
-        else:
-            break
-
-    width = high - low
-    position = width / 2 + low
-    return position, width
+    return vis
 
 
 def analyze_z_levels(pc, aabb):
@@ -117,10 +83,10 @@ def analyze_z_levels(pc, aabb):
         bar_list_z[peak].set_color(color_front_highlight)
 
         # Get extents of peak
-        peak_slice_position, peak_slice_width = get_peak_slice_params(hist_z_smooth, peak, 0.1)
+        peak_slice_position, peak_slice_width = util_histogram.get_peak_slice_params(hist_z_smooth, peak, 0.1)
 
         # Get slice at Z height
-        pc_slice = get_slice(pc, aabb, 2, peak_slice_position / bin_count_z, peak_slice_width / bin_count_z, normalized=True)
+        pc_slice = util_cloud.get_slice(pc, aabb, 2, peak_slice_position / bin_count_z, peak_slice_width / bin_count_z, normalized=True)
         pc_slice_aabb = pc_slice.get_axis_aligned_bounding_box()
         analyze_z_level(pc_slice, pc_slice_aabb)
 
@@ -173,7 +139,7 @@ def analyze_z_level(pc, aabb):
             bar_list_y_smooth[peak_y].set_color(color_back_highlight)
             bar_list_y[peak_y].set_color(color_front_highlight)
 
-        #o3d.io.write_point_cloud(dir_output + filename + "_grid_{}.ply".format(peak), pc_slice)
+        #o3d.io.write_point_cloud(dir_output + filename + "_grid_{}.ply".format(0), pc)
         analyze_beam_system(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x)
         analyze_beam_system(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y)
 
@@ -182,11 +148,11 @@ def analyze_beam_system(pc, aabb, axis, hist, peaks, source_bin_count):
     not_axis = int(not axis)
     beam_layers.append(BeamSystemLayer())
     for peak in peaks:
-        slice_position, slice_width = get_peak_slice_params(hist, peak, 0.1)
+        slice_position, slice_width = util_histogram.get_peak_slice_params(hist, peak, 0.1)
         #print("beam!")
         #print(slice_position)
         #print(slice_width)
-        beam_slice = get_slice(pc, aabb, axis, slice_position / source_bin_count, slice_width / source_bin_count, normalized=True)
+        beam_slice = util_cloud.get_slice(pc, aabb, axis, slice_position / source_bin_count, slice_width / source_bin_count, normalized=True)
         beam_slice_points = np.array(beam_slice.points)
         beam_aabb = beam_slice.get_axis_aligned_bounding_box()
         extent = beam_aabb.get_extent()
@@ -217,7 +183,7 @@ def analyze_beam_system(pc, aabb, axis, hist, peaks, source_bin_count):
         slice_width = high - low
         slice_position = slice_width / 2 + low
 
-        beam_slice = get_slice(beam_slice, beam_aabb, int(not axis), slice_position / bin_count, slice_width / bin_count, normalized=True)
+        beam_slice = util_cloud.get_slice(beam_slice, beam_aabb, int(not axis), slice_position / bin_count, slice_width / bin_count, normalized=True)
         beam_aabb = beam_slice.get_axis_aligned_bounding_box()
         #beam_aabb.color = (0, 1, 1) if axis else (1, 0, 1)
 
@@ -227,14 +193,7 @@ def analyze_beam_system(pc, aabb, axis, hist, peaks, source_bin_count):
     beam_layers[-1].finalize()
 
 
-def setup_vis():
-    vis = o3d.visualization.VisualizerWithKeyCallback()
-    #vis.register_key_callback(83, save_view)
-    vis.register_key_callback(69, set_up_vector)
-    vis.create_window()
-    vis.get_render_option().point_size = 1
 
-    return vis
 
 
 def perform_beam_splits(primary_layer, secondary_layer):
@@ -245,14 +204,30 @@ def perform_beam_splits(primary_layer, secondary_layer):
         flag = False
         for pb in primary_layer.beams:
             location = sb.get_point_param(pb.aabb.get_center())
+
             if 0 < location < sb.length:
                 if 0.1 < location < (sb.length - 0.1):
+
+                    split_point = pb.aabb.get_center()
+                    split_point[sb.axis] = sb.aabb.get_center()[sb.axis]
+                    split_point[2] = split_point[2] + 100
+                    sphere = o3d.geometry.TriangleMesh.create_sphere(radius=50)
+                    sphere.translate(split_point)
+                    sphere.paint_uniform_color((1,0,0))
+                    vis.add_geometry(sphere)
+
                     flag = True
                     new_a, new_b = sb.split(location)
                     if new_a.length > 500:
                         secondary_layer.beams.append(new_a)
+                    else:
+                        new_a.aabb.color = (1,0,1)
+                        vis.add_geometry(new_a.aabb)
                     if new_b.length > 500:
                         secondary_layer.beams.append(new_b)
+                    else:
+                        new_b.aabb.color = (1, 0, 1)
+                        vis.add_geometry(new_b.aabb)
 
                     break
         if not flag:
@@ -333,6 +308,7 @@ if __name__ == '__main__':
     if len(beam_layers) > 2:
         print("Error : Handling more than 2 beam layers not yet implemented")
     primary_id = int(beam_layers[0].mean_spacing < beam_layers[1].mean_spacing)
+
     secondary = perform_beam_splits(beam_layers[primary_id], beam_layers[int(not primary_id)])
 
     for beam in beam_layers[primary_id].beams:
@@ -341,6 +317,8 @@ if __name__ == '__main__':
     for beam in secondary.beams:
         vis.add_geometry(beam.cloud)
         vis.add_geometry(beam.aabb)
+
+
 
     # === Construct DAG Diagram ===
     analyze_beam_connections(beam_layers[primary_id], secondary)
@@ -364,26 +342,31 @@ if __name__ == '__main__':
         upstream, downstream = util_graph.get_stream_counts(DG, beam.id)
         DG.nodes[beam.id]['stream'] = upstream
 
-    # Highlight model elements for example
-    secondary.beams[7].aabb.color = (1, 0, 0)
-    beam_layers[primary_id].beams[1].aabb.color = (1, 0, 0)
-
     # Generate beam labels from downstream counts
     labels = nx.get_node_attributes(DG, 'stream')
 
-    # Highlight example nodes and edges
-    secondary_node_id = secondary.beams[7].id
-    primary_node_id = beam_layers[primary_id].beams[1].id
-    # column_node_id =
+    if do_highlighting:
+        # Highlight model elements for example
+        secondary.beams[7].aabb.color = (1, 0, 0)
+        beam_layers[primary_id].beams[1].aabb.color = (1, 0, 0)
 
-    node_colors = ['blue'] * len(DG.nodes)
-    node_colors[util_graph.get_node_id(DG, secondary_node_id)] = 'red'
-    node_colors[util_graph.get_node_id(DG, primary_node_id)] = 'red'
+        # Highlight example nodes and edges
+        secondary_node_id = secondary.beams[7].id
+        primary_node_id = beam_layers[primary_id].beams[1].id
+        # column_node_id =
 
-    edge_colors = ['black'] * len(DG.edges)
-    edge_colors[util_graph.get_edge_id(DG, secondary_node_id, primary_node_id)] = 'red'
+        node_colors = ['blue'] * len(DG.nodes)
+        node_colors[util_graph.get_node_id(DG, secondary_node_id)] = 'red'
+        node_colors[util_graph.get_node_id(DG, primary_node_id)] = 'red'
 
-    nx.draw(DG, pos, node_color=node_colors, edge_color=edge_colors, labels=labels, with_labels=True, node_size=300)
+        edge_colors = ['black'] * len(DG.edges)
+        edge_colors[util_graph.get_edge_id(DG, secondary_node_id, primary_node_id)] = 'red'
+
+        nx.draw(DG, pos, node_color=node_colors, edge_color=edge_colors, labels=labels, with_labels=True, node_size=300)
+    else:
+        nx.draw(DG, pos, labels=labels, with_labels=True, node_size=300)
+
+
     plt.savefig(dir_output + filename + "_graph.png")
     if show_dag:
         plt.show()

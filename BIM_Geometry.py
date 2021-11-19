@@ -27,7 +27,6 @@ class BeamSystemLayer:
             beam_b = self.beams[i + 1]
             distances[i] = abs(beam_a.aabb.get_center()[beam_a.axis] - beam_b.aabb.get_center()[beam_b.axis])
             self.mean_spacing = np.mean(distances)
-        print(self.mean_spacing)
 
 
 class Beam:

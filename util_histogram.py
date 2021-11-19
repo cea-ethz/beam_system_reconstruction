@@ -32,3 +32,29 @@ def process_histogram(hist):
     hist_smooth = normalize_histogram(hist_smooth)
     hist = normalize_histogram(hist)
     return hist, hist_smooth
+
+def get_peak_slice_params(hist, peak, diff=0.1):
+    """
+    Given a peak, return the slice parameters to stay within [diff] of that peak (may not be centered at the peak)
+    :param hist:
+    :param peak:
+    :param diff:
+    :return:
+    """
+    low = peak
+    high = peak+1
+
+    for i in range(low - 1, -1, -1):
+        if hist[peak] - hist[i] < diff:
+            low = i
+        else:
+            break
+    for i in range(low + 1, len(hist)):
+        if hist[peak] - hist[i] < diff:
+            high = i
+        else:
+            break
+
+    width = high - low
+    position = width / 2 + low
+    return position, width
