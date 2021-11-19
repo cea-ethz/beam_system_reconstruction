@@ -99,7 +99,7 @@ def main():
     plt.setp(axs[1], xlabel='X Axis Bins')
     plt.setp(axs[2], xlabel='Y Axis Bins')
 
-    beam_layers = analysis_beams.analyze_z_levels(cloud, aabb_main, axs)
+    beam_layers = analysis_beams.detect_beams(cloud, aabb_main, axs)
 
     plt.savefig(dir_output + filename + "_plot.png")
     if show_histogram:
@@ -120,7 +120,6 @@ def main():
     for beam in secondary.beams:
         vis.add_geometry(beam.cloud)
         vis.add_geometry(beam.aabb)
-
 
 
     # === Construct DAG Diagram ===
@@ -169,7 +168,6 @@ def main():
     else:
         nx.draw(DG, pos, labels=labels, with_labels=True, node_size=300)
 
-
     plt.savefig(dir_output + filename + "_graph.png")
     if show_dag:
         plt.show()
@@ -179,5 +177,7 @@ def main():
     vis.run()
     vis.destroy_window()
 
+
+# === Script entry ===
 if __name__ == '__main__':
     main()

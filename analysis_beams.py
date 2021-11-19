@@ -23,7 +23,7 @@ variance_split = 0.075
 beam_layers = []
 
 
-def analyze_z_levels(pc, aabb, axs=None):
+def detect_beams(pc, aabb, axs=None):
     points = np.asarray(pc.points)
 
     bin_count_z = math.ceil(aabb.get_extent()[2] / bin_width)
@@ -103,10 +103,11 @@ def analyze_z_level(pc, aabb,axs=None):
             bar_list_y[peak_y].set_color(color_front_highlight)
 
         #o3d.io.write_point_cloud(dir_output + filename + "_grid_{}.ply".format(0), pc)
-        analyze_beam_system(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x)
-        analyze_beam_system(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y)
+        analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x)
+        analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y)
 
-def analyze_beam_system(pc, aabb, axis, hist, peaks, source_bin_count):
+
+def analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
     not_axis = int(not axis)
     beam_layers.append(BeamSystemLayer())
     for peak in peaks:
