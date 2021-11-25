@@ -2,6 +2,14 @@ import numpy as np
 import open3d as o3d
 
 
+class Geometry:
+    geometry_id_counter = 0
+
+    def __init__(self):
+        self.id = Geometry.geometry_id_counter
+        Geometry.geometry_id_counter += 1
+
+
 class Collision:
     def __init__(self, a, b, precedence):
         self.a = a
@@ -16,32 +24,32 @@ class BeamSystemLayer:
     def __init__(self):
         self.beams = []
         self.mean_spacing = -1
+        self.average_z = None
 
     def add_beam(self, beam):
         self.beams.append(beam)
 
     def finalize(self):
-        distances = np.zeros(len(self.beams) - 1)
-        for i in range(len(self.beams) - 1):
-            beam_a = self.beams[i]
-            beam_b = self.beams[i + 1]
-            distances[i] = abs(beam_a.aabb.get_center()[beam_a.axis] - beam_b.aabb.get_center()[beam_b.axis])
-            self.mean_spacing = np.mean(distances)
+        if len(self.beams):
+            distances = np.zeros(len(self.beams) - 1)
+            for i in range(len(self.beams) - 1):
+                beam_a = self.beams[i]
+                beam_b = self.beams[i + 1]
+                distances[i] = abs(beam_a.aabb.get_center()[beam_a.axis] - beam_b.aabb.get_center()[beam_b.axis])
+                self.mean_spacing = np.mean(distances)
+
+        self.average_z = np.average([beam.aabb.get_center()[2] for beam in self.beams])
 
 
-class Beam:
-
-    # Possibly stupid method to progressively assign ids to beams/nodes
-    beam_id_counter = 0
+class Beam(Geometry):
 
     def __init__(self, aabb, axis, cloud):
+        super().__init__()
         self.aabb = aabb
         self.axis = axis
         self.long_axis = int(not axis)
         self.cloud = cloud
         self.length = aabb.get_extent()[int(not axis)]
-        self.id = Beam.beam_id_counter
-        Beam.beam_id_counter += 1
 
     def check_overlap(self, other):
         sc = self.aabb.get_center()
@@ -97,3 +105,12 @@ class Beam:
         beam_b = Beam(aabb_b, self.axis, pc_b)
 
         return beam_a, beam_b
+
+
+class Column(Geometry):
+    def __init__(self, center):
+        super().__init__()
+        self.center = center
+        self.child_beams = []
+        self.cloud = None
+        self.aabb = None

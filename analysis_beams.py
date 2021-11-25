@@ -3,19 +3,18 @@ import numpy as np
 import open3d as o3d
 import scipy.signal as signal
 
+import settings
+
 import util_cloud
 import util_histogram
 
 from BIM_Geometry import Beam, BeamSystemLayer
-from util_histogram import color_back, color_front, color_front_highlight, color_back_highlight
-
 
 # Intended bin size in mm
 bin_width = 50
 
 variance_split = 0.075
 
-#TK refactor this out of global
 
 def detect_beams(pc, aabb, axs=None):
     points = np.asarray(pc.points)
@@ -32,6 +31,8 @@ def detect_beams(pc, aabb, axs=None):
     beam_layers = []
     column_slice_positions = []
 
+    floor_levels = []
+
     for i, peak in enumerate(peaks):
         # Get extents of peak
         peak_slice_position, peak_slice_width = util_histogram.get_peak_slice_params(hist_z_smooth, peak, 0.1)
@@ -39,13 +40,17 @@ def detect_beams(pc, aabb, axs=None):
         # Get slice at Z height
         pc_slice = util_cloud.get_slice(pc, aabb, 2, peak_slice_position / bin_count_z, peak_slice_width / bin_count_z, normalized=True)
         pc_slice_aabb = pc_slice.get_axis_aligned_bounding_box()
-        beam_layers += _analyze_z_level(pc_slice, pc_slice_aabb, axs)
+
+        new_levels = _analyze_z_level(pc_slice, pc_slice_aabb, axs)
+        beam_layers += new_levels
 
         # If the peak is a beam system, record the real position 1 meter below the slice to start analyzing for columns
-        if len(beam_layers):
+        if len(new_levels):
             column_slice_positions.append(bin_edges[peak] - 1000)
+        else:
+            floor_levels.append(peak_slice_position * bin_width + aabb.get_min_bound()[2])
 
-    return beam_layers, column_slice_positions
+    return beam_layers, column_slice_positions, floor_levels
 
 
 def _analyze_z_level(pc, aabb, axs=None):
@@ -156,21 +161,24 @@ def perform_beam_splits(primary_layer, secondary_layer, vis=None):
                     split_point = pb.aabb.get_center()
                     split_point[sb.axis] = sb.aabb.get_center()[sb.axis]
                     split_point[2] = split_point[2] + 100
-                    sphere = o3d.geometry.TriangleMesh.create_sphere(radius=50)
-                    sphere.translate(split_point)
-                    sphere.paint_uniform_color((1,0,0))
-                    vis.add_geometry(sphere)
+
+                    if settings.read("visible_splits"):
+                        sphere = o3d.geometry.TriangleMesh.create_sphere(radius=50)
+                        sphere.translate(split_point)
+                        sphere.paint_uniform_color((1, 0, 0))
+                        vis.add_geometry(sphere)
 
                     flag = True
                     new_a, new_b = sb.split(location)
                     if new_a.length > 500:
                         secondary_layer.beams.append(new_a)
-                    else:
-                        new_a.aabb.color = (1,0,1)
+                    elif settings.read("visible_short_beams"):
+                        new_a.aabb.color = (1, 0, 1)
                         vis.add_geometry(new_a.aabb)
+
                     if new_b.length > 500:
                         secondary_layer.beams.append(new_b)
-                    else:
+                    elif settings.read("visible_short_beams"):
                         new_b.aabb.color = (1, 0, 1)
                         vis.add_geometry(new_b.aabb)
 
@@ -190,7 +198,7 @@ def analyze_beam_connections(primary_layer, secondary_layer,DG):
     # Set node_layers
     for pb in primary_layer.beams:
         if pb.id in DG.nodes:
-            DG.nodes[pb.id]['layer'] = 0
+            DG.nodes[pb.id]['layer'] = 1
     for sb in secondary_layer.beams:
         if sb.id in DG.nodes:
-            DG.nodes[sb.id]['layer'] = 1
+            DG.nodes[sb.id]['layer'] = 2

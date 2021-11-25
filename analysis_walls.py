@@ -42,13 +42,13 @@ def handle_peak(pc, aabb, peak, hist, bin_count, axis, vis):
     #print("{} : {} : {}".format(peak, position / bin_count, width / bin_count))
     peak_slice = util_cloud.get_slice(pc, aabb, axis, position / bin_count, width / bin_count, normalized=True)
     peak_slice.paint_uniform_color((1,0,0))
-    vis.add_geometry(peak_slice)
+    #vis.add_geometry(peak_slice)
     slice_points = np.asarray(peak_slice.points)
     mean = np.median(slice_points[:, axis])
-    interior, exterior = util_cloud.split_slice(pc, aabb, axis, mean, 20, normalized=False)
+    interior, exterior = util_cloud.split_slice(pc, aabb, axis, mean, 30, normalized=False)
 
     interior.paint_uniform_color((1, 0, 1))
-    vis.add_geometry(interior)
+    #vis.add_geometry(interior)
 
     return exterior
 
