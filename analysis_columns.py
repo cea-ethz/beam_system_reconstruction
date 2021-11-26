@@ -10,8 +10,13 @@ from BIM_Geometry import Column
 def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams,z_extents, vis):
     pc_flat = util_cloud.flatten_cloud(pc)
 
-    #labels = np.array(pc_flat.cluster_dbscan(eps=0.02, min_points=10, print_progress=True))
-    labels = np.array(pc_flat.cluster_dbscan(eps=12, min_points=10, print_progress=True))
+    with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Info) as cm:
+        # labels = np.array(pc_flat.cluster_dbscan(eps=0.02, min_points=10, print_progress=True))
+        labels = np.array(pc_flat.cluster_dbscan(eps=12, min_points=10, print_progress=True))
+
+    # If column detection failed
+    if len(labels) == 0:
+        return []
 
     max_label = labels.max()
     print(f"point cloud has {max_label + 1} clusters")

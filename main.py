@@ -17,6 +17,7 @@ import analysis_columns
 import analysis_walls
 
 import settings
+import timer
 
 import util_graph
 import util_histogram
@@ -35,8 +36,8 @@ from BIM_Geometry import Beam, BeamSystemLayer
 
 DG = nx.DiGraph()
 
-settings.write("display_histogram", True)
-settings.write("display_dag", True)
+settings.write("display_histogram", False)
+settings.write("display_dag", False)
 settings.write("do_dag_highlighting", False)
 
 settings.write("visible_beams", True)
@@ -91,7 +92,9 @@ def main():
     vis = setup_vis()
 
     # Load cloud from file
+    timer.start("Read Cloud")
     pc_main = o3d.io.read_point_cloud(filepath)
+    timer.end()
     print(pc_main)
     #vis.add_geometry(cloud)
 
@@ -120,22 +123,30 @@ def main():
     plt.setp(axs[1, 2], xlabel='Y Axis Bins')
 
     # Check for walls
+    timer.start("Wall Analysis")
     pc_main = analysis_walls.analyze_walls(pc_main, aabb_main, axs, vis)
-    #vis.add_geometry(cloud)
+    timer.end()
 
     # Perform main beam analysis
+    timer.start("Beam Analysis")
     beam_layers, column_slice_positions, floor_levels = analysis_beams.detect_beams(pc_main, aabb_main, axs)
+    timer.end()
+
 
     # Finalize the histogram plots
     plt.savefig(dir_output + filename + "_plot.png")
     if settings.read("display_histogram"):
+        timer.pause()
         plt.show()
+        timer.unpause()
     else:
         plt.clf()
 
     # Split beams and add final forms to vis
-    if len(beam_layers) > 2:
-        print("Note : {} beam layers, handling more than 2 beam layers not yet implemented".format(len(beam_layers)))
+    if len(beam_layers) != 2:
+        print("Warning : {} beam layers, handling other than 2 beam layers not yet implemented".format(len(beam_layers)))
+        beam_layers = beam_layers[-2:]
+        print(len(beam_layers))
     primary_id = int(beam_layers[0].mean_spacing < beam_layers[1].mean_spacing)
 
     secondary = analysis_beams.perform_beam_splits(beam_layers[primary_id], beam_layers[int(not primary_id)], vis)
@@ -149,18 +160,22 @@ def main():
             vis.add_geometry(beam.aabb)
 
     # === Perform main column analysis ===
+    timer.start("Column Analysis")
     for column_slice_position in column_slice_positions:
         pc_column = util_cloud.get_slice(pc_main, aabb_main, 2, column_slice_position, 1000, normalized=False)
         aabb_column = pc_column.get_axis_aligned_bounding_box()
-        z_extents = (floor_levels[0] + 50,beam_layers[primary_id].average_z)
-        columns = analysis_columns.analyze_columns(pc_column, aabb_column, pc_main, aabb_main, beam_layers[primary_id].beams, z_extents,vis)
+        z_min = floor_levels[0] + 50 if len(floor_levels) else aabb_main.get_min_bound()[2]
+        z_extents = (z_min, beam_layers[primary_id].average_z)
+        columns = analysis_columns.analyze_columns(pc_column, aabb_column, pc_main, aabb_main, beam_layers[primary_id].beams, z_extents, vis)
 
         for column in columns:
             vis.add_geometry(column.pc)
             vis.add_geometry(column.aabb)
+    timer.end()
 
 
     # === Construct DAG Diagram ===
+    timer.start("DAG Analysis")
     analysis_beams.analyze_beam_connections(beam_layers[primary_id], secondary, DG)
 
     for column in columns:
@@ -190,6 +205,8 @@ def main():
         upstream, downstream = util_graph.get_stream_counts(DG, beam.id)
         DG.nodes[beam.id]['stream'] = upstream
 
+    timer.end()
+
     # Generate beam labels from downstream counts
     labels = nx.get_node_attributes(DG, 'stream')
 
@@ -216,7 +233,9 @@ def main():
 
     plt.savefig(dir_output + filename + "_graph.png")
     if settings.read("display_dag"):
+        timer.pause()
         plt.show()
+        timer.unpause()
     else:
         plt.clf()
 

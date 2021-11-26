@@ -3,6 +3,8 @@ import numpy as np
 import open3d as o3d
 import scipy.signal as signal
 
+import analysis_hough
+
 import settings
 
 import util_cloud
@@ -25,6 +27,10 @@ def detect_beams(pc, aabb, axs=None):
     hist_z, hist_z_smooth = util_histogram.process_histogram(hist_z)
 
     peaks, properties = signal.find_peaks(hist_z_smooth, width=1, prominence=0.1)
+
+    if len(peaks) == 0:
+        print("Error : No Z peaks found")
+        print(hist_z)
 
     util_histogram.render_bar(axs[0, 0], hist_z, hist_z_smooth, peaks)
 
@@ -54,6 +60,7 @@ def detect_beams(pc, aabb, axs=None):
 
 
 def _analyze_z_level(pc, aabb, axs=None):
+
     slice_points = np.asarray(pc.points)
 
     rel_height = 0.75  # Check the width near the bottom of the peak
@@ -91,6 +98,9 @@ def _analyze_z_level(pc, aabb, axs=None):
         #o3d.io.write_point_cloud(dir_output + filename + "_grid_{}.ply".format(0), pc)
         beam_layers.append(_analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x))
         beam_layers.append(_analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y))
+
+    if len(beam_layers):
+        analysis_hough.analyze_by_hough_transform(pc, aabb)
     return beam_layers
 
 
