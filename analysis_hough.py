@@ -9,7 +9,7 @@ import timer
 
 
 def analyze_by_hough_transform(pc, aabb):
-    scale = 4
+    scale = 8
 
     min_bound = aabb.get_min_bound()
     min_bound[0] = int(min_bound[0])
@@ -26,11 +26,11 @@ def analyze_by_hough_transform(pc, aabb):
 
     accumulator /= np.max(accumulator)
     accumulator = np.float32(accumulator)
-    output = cv2.cvtColor(accumulator, cv2.COLOR_GRAY2BGR)
-
-
     accumulator *= 255
-    accumulator = accumulator.astype(np.int32)
+
+    ret, accumulator = cv2.threshold(accumulator, 22, 255, cv2.THRESH_BINARY)
+
+    output = cv2.cvtColor(accumulator, cv2.COLOR_GRAY2BGR)
 
     edges = skimage.feature.canny(accumulator, 2, 1, 25)
     lines = skimage.transform.probabilistic_hough_line(edges, threshold=10, line_length=5, line_gap=3)
@@ -40,12 +40,13 @@ def analyze_by_hough_transform(pc, aabb):
     for line in lines:
         p0, p1 = line
         cv2.line(output, p0, p1, (255, 0, 0))
-    #print(output)
-    #output *= 255
+
+    cv2.imwrite("map.png", accumulator)
+
+    output = output.astype(np.uint8)
     cv2.imwrite("hough.png", output)
 
-    #accumulator *= 255
-    cv2.imwrite("map.png", accumulator)
+
 
     timer.pause()
     cv2.imshow("hough", output)

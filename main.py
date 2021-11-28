@@ -1,4 +1,4 @@
-import math
+import configparser
 import networkx as nx
 import numpy as np
 import open3d as o3d
@@ -66,6 +66,8 @@ def setup_vis():
 
 def main():
     global vis
+
+    settings.load_user_settings()
 
     # Load last cloud location from settings if applicable
     initial_dirname = os.getcwd()
@@ -182,8 +184,11 @@ def main():
         #print("Beam id : {}".format(column.child_beams[0].id))
         DG.add_edges_from([(column.child_beams[0].id, column.id)])
         DG.nodes[column.id]['layer'] = 0
+        DG.nodes[column.id]['source'] = 'column'
 
     # Rescale smaller layers for visibility
+    for node in DG.nodes:
+        print("{} : {}".format(node,DG.nodes[node]))
     pos = nx.multipartite_layout(DG, 'layer')
     for i, pb in enumerate(beam_layers[primary_id].beams):
         n = 1.0 * i / (len(beam_layers[primary_id].beams) - 1)

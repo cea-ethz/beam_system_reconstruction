@@ -71,6 +71,7 @@ def _analyze_z_level(pc, aabb, axs=None):
     # print("Bin Count X : {}".format(bin_count_x))
     hist_x, _ = np.histogram(slice_points[:, 0], bin_count_x)
     hist_x, hist_x_smooth = util_histogram.process_histogram(hist_x)
+    print(hist_x_smooth.shape)
     mean_x = np.mean(hist_x_smooth)
     peaks_x, _ = signal.find_peaks(hist_x_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
 
@@ -79,6 +80,7 @@ def _analyze_z_level(pc, aabb, axs=None):
     # print("Bin Count Y : {}".format(bin_count_y))
     hist_y, _ = np.histogram(slice_points[:, 1], bin_count_y)
     hist_y, hist_y_smooth = util_histogram.process_histogram(hist_y)
+    print(hist_y_smooth.shape)
     mean_y = np.mean(hist_y_smooth)
     peaks_y, _ = signal.find_peaks(hist_y_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
 
@@ -86,21 +88,26 @@ def _analyze_z_level(pc, aabb, axs=None):
     variance_x = np.var(hist_x)
     variance_y = np.var(hist_y)
 
-    # print("Peak : {}, Variance X : {}, Variance Y : {}".format(peak, variance_x, variance_y))
-    #
+    if settings.read("verbosity.floor_test"):
+        print("Peak : {}, Variance X : {}, Variance Y : {}".format("?", variance_x, variance_y))
+
     beam_layers = []
     if variance_x < variance_split or variance_y < variance_split:
-
         # Plot X and Y histograms
         util_histogram.render_bar(axs[1, 1], hist_x, hist_x_smooth, peaks_x)
         util_histogram.render_bar(axs[1, 2], hist_y, hist_y_smooth, peaks_y)
 
-        #o3d.io.write_point_cloud(dir_output + filename + "_grid_{}.ply".format(0), pc)
-        beam_layers.append(_analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x))
-        beam_layers.append(_analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y))
+        if layer := _analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x):
+            beam_layers.append(layer)
+        if layer := _analyze_beam_system_layer(pc, aabb, 0, hist_y_smooth, peaks_y, bin_count_y):
+            beam_layers.append(layer)
+
+        #beam_layers.append(_analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y))
 
     if len(beam_layers):
-        analysis_hough.analyze_by_hough_transform(pc, aabb)
+        pass
+        #analysis_hough.analyze_by_hough_transform(pc, aabb)
+
     return beam_layers
 
 
@@ -111,9 +118,7 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
 
     for peak in peaks:
         slice_position, slice_width = util_histogram.get_peak_slice_params(hist, peak, 0.1)
-        #print("beam!")
-        #print(slice_position)
-        #print(slice_width)
+
         beam_slice = util_cloud.get_slice(pc, aabb, axis, slice_position / source_bin_count, slice_width / source_bin_count, normalized=True)
         beam_slice_points = np.array(beam_slice.points)
         beam_aabb = beam_slice.get_axis_aligned_bounding_box()
@@ -152,7 +157,10 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
         layer.add_beam(Beam(beam_aabb, axis, beam_slice))
         #vis.add_geometry(beam_slice)
         #vis.add_geometry(beam_aabb)
-    layer.finalize()
+    if len(layer.beams):
+        layer.finalize()
+    else:
+        layer = None
     return layer
 
 
