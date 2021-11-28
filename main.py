@@ -1,12 +1,9 @@
-import configparser
 import networkx as nx
 import numpy as np
 import open3d as o3d
 import os
 import progressbar
-import scipy.signal as signal
 import shelve
-import time
 
 from matplotlib import pyplot as plt
 from tkinter import filedialog
@@ -110,12 +107,12 @@ def main():
     plt.setp(axs[1, 1], xlabel='X Axis Bins')
     plt.setp(axs[1, 2], xlabel='Y Axis Bins')
 
-    # Check for walls
+    # === Check for walls ===
     timer.start("Wall Analysis")
     pc_main = analysis_walls.analyze_walls(pc_main, aabb_main, axs, vis)
     timer.end("Wall Analysis")
 
-    # Perform main beam analysis
+    # === Perform main beam analysis ===
     timer.start("Beam Analysis")
     beam_layers, column_slice_positions, floor_levels = analysis_beams.detect_beams(pc_main, aabb_main, axs)
 
@@ -133,15 +130,16 @@ def main():
         print("Warning : {} beam layers, handling other than 2 beam layers not yet implemented".format(len(beam_layers)))
         beam_layers = beam_layers[-2:]
         print(len(beam_layers))
-    primary_id = int(beam_layers[0].mean_spacing < beam_layers[1].mean_spacing)
 
-    secondary = analysis_beams.perform_beam_splits(beam_layers[primary_id], beam_layers[int(not primary_id)], vis)
+    primary_id = int(beam_layers[0].mean_spacing < beam_layers[1].mean_spacing)
+    beam_layer_primary = beam_layers[primary_id]
+    beam_layer_secondary = analysis_beams.perform_beam_splits(beam_layers[primary_id], beam_layers[int(not primary_id)], vis)
 
     if settings.read("visibility.beams_final"):
-        for beam in beam_layers[primary_id].beams:
+        for beam in beam_layer_primary.beams:
             vis.add_geometry(beam.cloud)
             vis.add_geometry(beam.aabb)
-        for beam in secondary.beams:
+        for beam in beam_layer_secondary.beams:
             vis.add_geometry(beam.cloud)
             vis.add_geometry(beam.aabb)
 
@@ -153,18 +151,17 @@ def main():
         pc_column = util_cloud.get_slice(pc_main, aabb_main, 2, column_slice_position, 1000, normalized=False)
         aabb_column = pc_column.get_axis_aligned_bounding_box()
         z_min = floor_levels[0] + 50 if len(floor_levels) else aabb_main.get_min_bound()[2]
-        z_extents = (z_min, beam_layers[primary_id].average_z)
-        columns = analysis_columns.analyze_columns(pc_column, aabb_column, pc_main, aabb_main, beam_layers[primary_id].beams, z_extents, vis)
+        z_extents = (z_min, beam_layer_primary.average_z)
+        columns = analysis_columns.analyze_columns(pc_column, aabb_column, pc_main, aabb_main, beam_layer_primary.beams, z_extents, vis)
 
         for column in columns:
             vis.add_geometry(column.pc)
             vis.add_geometry(column.aabb)
     timer.end("Column Analysis")
 
-
     # === Construct DAG Diagram ===
     timer.start("DAG Analysis")
-    analysis_beams.analyze_beam_connections(beam_layers[primary_id], secondary, DG)
+    analysis_beams.analyze_beam_connections(beam_layer_primary, beam_layer_secondary, DG)
 
     for column in columns:
         #print("Beam id : {}".format(column.child_beams[0].id))
@@ -172,40 +169,41 @@ def main():
         DG.nodes[column.id]['layer'] = 0
         DG.nodes[column.id]['source'] = 'column'
 
-    # Rescale smaller layers for visibility
+    # Create multipartite layout and reposition nodes for visibility
     pos = nx.multipartite_layout(DG, 'layer')
-    for i, pb in enumerate(beam_layers[primary_id].beams):
-        n = 1.0 * i / (len(beam_layers[primary_id].beams) - 1)
-        pos[pb.id][1] = n * 2 - 1
+
+    column_ids = [column.id for column in columns if column.id in DG.nodes]
+    primary_ids = [beam.id for beam in beam_layer_primary.beams if beam.id in DG.nodes]
+    secondary_ids = [beam.id for beam in beam_layer_secondary.beams if beam.id in DG.nodes]
+
+    pos = util_graph.normalize_position(DG, pos, column_ids)
+    pos = util_graph.simplify_position(DG, pos, primary_ids)
+    pos = util_graph.normalize_position(DG, pos, primary_ids)
+    pos = util_graph.simplify_position(DG, pos, secondary_ids)
+    pos = util_graph.normalize_position(DG, pos, secondary_ids)
 
     # Calculate downstream counts
-    for column in columns:
-        upstream, downstream = util_graph.get_stream_counts(DG, column.id)
-        DG.nodes[column.id]['stream'] = upstream
-    for beam in beam_layers[primary_id].beams:
-        if beam.id not in DG.nodes:
-            continue
-        upstream, downstream = util_graph.get_stream_counts(DG, beam.id)
-        DG.nodes[beam.id]['stream'] = upstream
-
-    for beam in secondary.beams:
-        if beam.id not in DG.nodes:
-            continue
-        upstream, downstream = util_graph.get_stream_counts(DG, beam.id)
-        DG.nodes[beam.id]['stream'] = upstream
+    for column_id in column_ids:
+        upstream, downstream = util_graph.get_stream_counts(DG, column_id)
+        DG.nodes[column_id]['stream'] = upstream
+    for primary_id in primary_ids:
+        upstream, downstream = util_graph.get_stream_counts(DG, primary_id)
+        DG.nodes[primary_id]['stream'] = upstream
+    for secondary_id in secondary_ids:
+        upstream, downstream = util_graph.get_stream_counts(DG, secondary_id)
+        DG.nodes[secondary_id]['stream'] = upstream
 
     # Generate beam labels from downstream counts
     labels = nx.get_node_attributes(DG, 'stream')
 
     if settings.read("do_dag_highlighting"):
         # Highlight model elements for example
-        secondary.beams[7].aabb.color = (1, 0, 0)
-        beam_layers[primary_id].beams[1].aabb.color = (1, 0, 0)
+        beam_layer_secondary.beams[7].aabb.color = (1, 0, 0)
+        beam_layer_primary.beams[1].aabb.color = (1, 0, 0)
 
         # Highlight example nodes and edges
-        secondary_node_id = secondary.beams[7].id
-        primary_node_id = beam_layers[primary_id].beams[1].id
-        # column_node_id =
+        secondary_node_id = beam_layer_secondary.beams[7].id
+        primary_node_id = beam_layer_primary.beams[1].id
 
         node_colors = ['blue'] * len(DG.nodes)
         node_colors[util_graph.get_node_id(DG, secondary_node_id)] = 'red'

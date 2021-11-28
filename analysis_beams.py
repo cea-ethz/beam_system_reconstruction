@@ -214,6 +214,8 @@ def analyze_beam_connections(primary_layer, secondary_layer, DG):
     for pb in primary_layer.beams:
         if pb.id in DG.nodes:
             DG.nodes[pb.id]['layer'] = 1
+            DG.nodes[pb.id]['source'] = 'beam'
     for sb in secondary_layer.beams:
         if sb.id in DG.nodes:
             DG.nodes[sb.id]['layer'] = 2
+            DG.nodes[sb.id]['source'] = 'beam'
