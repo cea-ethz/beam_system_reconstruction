@@ -171,7 +171,7 @@ def perform_beam_splits(primary_layer, secondary_layer, vis=None):
             location = sb.get_point_param(pb.aabb.get_center())
 
             if 0 < location < sb.length:
-                if 0.1 < location < (sb.length - 0.1):
+                if 0.1 < location < (sb.length - 0.1) and sb.check_overlap(pb):
 
                     split_point = pb.aabb.get_center()
                     split_point[sb.axis] = sb.aabb.get_center()[sb.axis]
