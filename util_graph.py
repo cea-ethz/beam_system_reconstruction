@@ -34,7 +34,10 @@ def simplify_position(dg, pos, node_ids):
     for nid in node_ids:
         edges = dg.out_edges(nid)
         y = [pos[n[1]][1] for n in edges]
-        pos[nid][1] = sum(y) / len(y)
+        if len(y):
+            pos[nid][1] = sum(y) / len(y)
+        else:
+            pos[nid][1] = - 10
     return pos
 
 
