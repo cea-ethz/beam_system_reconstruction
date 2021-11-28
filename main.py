@@ -23,28 +23,13 @@ import util_graph
 import util_histogram
 import util_cloud
 
-from BIM_Geometry import Beam, BeamSystemLayer
-
-
-# Make basic material judgement
-
 
 # === DEFINITIONS ===
-
-#aabb_main = None
-
 
 DG = nx.DiGraph()
 
 settings.write("display_histogram", False)
-settings.write("display_dag", False)
 settings.write("do_dag_highlighting", False)
-
-settings.write("visible_beams", True)
-settings.write("visible_splits", False)
-settings.write("visible_short_beams", False)
-
-settings.write("visible_axes", False)
 
 vis = None
 
@@ -106,8 +91,9 @@ def main():
     vis.add_geometry(aabb_main)
 
     # Add coordinate system to scene
-    mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1000, origin=[0, 0, 0])
-    vis.add_geometry(mesh_frame)
+    if settings.read("visibility.world_axis"):
+        mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1000, origin=[0, 0, 0])
+        vis.add_geometry(mesh_frame)
 
     # Setup histogram diagram
     px = 1 / plt.rcParams['figure.dpi']  # pixel in inches
@@ -153,7 +139,7 @@ def main():
 
     secondary = analysis_beams.perform_beam_splits(beam_layers[primary_id], beam_layers[int(not primary_id)], vis)
 
-    if settings.read("visible_beams"):
+    if settings.read("visibility.beams_final"):
         for beam in beam_layers[primary_id].beams:
             vis.add_geometry(beam.cloud)
             vis.add_geometry(beam.aabb)
@@ -187,8 +173,6 @@ def main():
         DG.nodes[column.id]['source'] = 'column'
 
     # Rescale smaller layers for visibility
-    for node in DG.nodes:
-        print("{} : {}".format(node,DG.nodes[node]))
     pos = nx.multipartite_layout(DG, 'layer')
     for i, pb in enumerate(beam_layers[primary_id].beams):
         n = 1.0 * i / (len(beam_layers[primary_id].beams) - 1)
@@ -196,7 +180,7 @@ def main():
 
     # Calculate downstream counts
     for column in columns:
-        upstream, downstream = util_graph.get_stream_counts(DG,column.id)
+        upstream, downstream = util_graph.get_stream_counts(DG, column.id)
         DG.nodes[column.id]['stream'] = upstream
     for beam in beam_layers[primary_id].beams:
         if beam.id not in DG.nodes:
@@ -237,7 +221,7 @@ def main():
         nx.draw(DG, pos, labels=labels, with_labels=True, node_size=300)
 
     plt.savefig(dir_output + filename + "_graph.png")
-    if settings.read("display_dag"):
+    if settings.read("display.dag"):
         timer.pause()
         plt.show()
         timer.unpause()

@@ -71,7 +71,6 @@ def _analyze_z_level(pc, aabb, axs=None):
     # print("Bin Count X : {}".format(bin_count_x))
     hist_x, _ = np.histogram(slice_points[:, 0], bin_count_x)
     hist_x, hist_x_smooth = util_histogram.process_histogram(hist_x)
-    print(hist_x_smooth.shape)
     mean_x = np.mean(hist_x_smooth)
     peaks_x, _ = signal.find_peaks(hist_x_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
 
@@ -80,7 +79,6 @@ def _analyze_z_level(pc, aabb, axs=None):
     # print("Bin Count Y : {}".format(bin_count_y))
     hist_y, _ = np.histogram(slice_points[:, 1], bin_count_y)
     hist_y, hist_y_smooth = util_histogram.process_histogram(hist_y)
-    print(hist_y_smooth.shape)
     mean_y = np.mean(hist_y_smooth)
     peaks_y, _ = signal.find_peaks(hist_y_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
 
@@ -99,14 +97,11 @@ def _analyze_z_level(pc, aabb, axs=None):
 
         if layer := _analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x):
             beam_layers.append(layer)
-        if layer := _analyze_beam_system_layer(pc, aabb, 0, hist_y_smooth, peaks_y, bin_count_y):
+        if layer := _analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y):
             beam_layers.append(layer)
 
-        #beam_layers.append(_analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y))
-
     if len(beam_layers):
-        pass
-        #analysis_hough.analyze_by_hough_transform(pc, aabb)
+        analysis_hough.analyze_by_hough_transform(pc, aabb)
 
     return beam_layers
 
@@ -180,7 +175,7 @@ def perform_beam_splits(primary_layer, secondary_layer, vis=None):
                     split_point[sb.axis] = sb.aabb.get_center()[sb.axis]
                     split_point[2] = split_point[2] + 100
 
-                    if settings.read("visible_splits"):
+                    if settings.read("visibility.split_points"):
                         sphere = o3d.geometry.TriangleMesh.create_sphere(radius=50)
                         sphere.translate(split_point)
                         sphere.paint_uniform_color((1, 0, 0))
@@ -190,13 +185,13 @@ def perform_beam_splits(primary_layer, secondary_layer, vis=None):
                     new_a, new_b = sb.split(location)
                     if new_a.length > 500:
                         secondary_layer.beams.append(new_a)
-                    elif settings.read("visible_short_beams"):
+                    elif settings.read("visibility.beams_rejected"):
                         new_a.aabb.color = (1, 0, 1)
                         vis.add_geometry(new_a.aabb)
 
                     if new_b.length > 500:
                         secondary_layer.beams.append(new_b)
-                    elif settings.read("visible_short_beams"):
+                    elif settings.read("visibility.beams_rejected"):
                         new_b.aabb.color = (1, 0, 1)
                         vis.add_geometry(new_b.aabb)
 
@@ -206,7 +201,7 @@ def perform_beam_splits(primary_layer, secondary_layer, vis=None):
     return new_secondary
 
 
-def analyze_beam_connections(primary_layer, secondary_layer,DG):
+def analyze_beam_connections(primary_layer, secondary_layer, DG):
     # Create edges
     for sb in secondary_layer.beams:
         for pb in primary_layer.beams:

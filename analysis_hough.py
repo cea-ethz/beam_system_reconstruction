@@ -3,8 +3,7 @@ import numpy as np
 import skimage.feature
 import skimage.transform
 
-from matplotlib import cm
-
+import settings
 import timer
 
 
@@ -46,10 +45,9 @@ def analyze_by_hough_transform(pc, aabb):
     output = output.astype(np.uint8)
     cv2.imwrite("hough.png", output)
 
-
-
-    timer.pause()
-    cv2.imshow("hough", output)
-    cv2.waitKey()
-    cv2.destroyAllWindows()
-    timer.unpause()
+    if settings.read("display.hough"):
+        timer.pause()
+        cv2.imshow("hough", output)
+        cv2.waitKey()
+        cv2.destroyAllWindows()
+        timer.unpause()
