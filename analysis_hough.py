@@ -8,6 +8,7 @@ import timer
 
 
 def analyze_by_hough_transform(pc, aabb):
+    timer.start("Hough Analysis")
     scale = 8
 
     min_bound = aabb.get_min_bound()
@@ -34,7 +35,6 @@ def analyze_by_hough_transform(pc, aabb):
     edges = skimage.feature.canny(accumulator, 2, 1, 25)
     lines = skimage.transform.probabilistic_hough_line(edges, threshold=10, line_length=5, line_gap=3)
 
-
     print("{} lines found".format(len(lines)))
     for line in lines:
         p0, p1 = line
@@ -46,8 +46,10 @@ def analyze_by_hough_transform(pc, aabb):
     cv2.imwrite("hough.png", output)
 
     if settings.read("display.hough"):
-        timer.pause()
+        timer.pause("Hough Analysis")
         cv2.imshow("hough", output)
         cv2.waitKey()
         cv2.destroyAllWindows()
-        timer.unpause()
+        timer.unpause("Hough Analysis")
+
+    timer.end("Hough Analysis")

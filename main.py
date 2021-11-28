@@ -81,7 +81,7 @@ def main():
     # Load cloud from file
     timer.start("Read Cloud")
     pc_main = o3d.io.read_point_cloud(filepath)
-    timer.end()
+    timer.end("Read Cloud")
     print(pc_main)
     #vis.add_geometry(cloud)
 
@@ -113,20 +113,18 @@ def main():
     # Check for walls
     timer.start("Wall Analysis")
     pc_main = analysis_walls.analyze_walls(pc_main, aabb_main, axs, vis)
-    timer.end()
+    timer.end("Wall Analysis")
 
     # Perform main beam analysis
     timer.start("Beam Analysis")
     beam_layers, column_slice_positions, floor_levels = analysis_beams.detect_beams(pc_main, aabb_main, axs)
-    timer.end()
-
 
     # Finalize the histogram plots
     plt.savefig(dir_output + filename + "_plot.png")
     if settings.read("display_histogram"):
-        timer.pause()
+        timer.pause("Beam Analysis")
         plt.show()
-        timer.unpause()
+        timer.unpause("Beam Analysis")
     else:
         plt.clf()
 
@@ -147,6 +145,8 @@ def main():
             vis.add_geometry(beam.cloud)
             vis.add_geometry(beam.aabb)
 
+    timer.end("Beam Analysis")
+
     # === Perform main column analysis ===
     timer.start("Column Analysis")
     for column_slice_position in column_slice_positions:
@@ -159,7 +159,7 @@ def main():
         for column in columns:
             vis.add_geometry(column.pc)
             vis.add_geometry(column.aabb)
-    timer.end()
+    timer.end("Column Analysis")
 
 
     # === Construct DAG Diagram ===
@@ -194,8 +194,6 @@ def main():
         upstream, downstream = util_graph.get_stream_counts(DG, beam.id)
         DG.nodes[beam.id]['stream'] = upstream
 
-    timer.end()
-
     # Generate beam labels from downstream counts
     labels = nx.get_node_attributes(DG, 'stream')
 
@@ -222,14 +220,18 @@ def main():
 
     plt.savefig(dir_output + filename + "_graph.png")
     if settings.read("display.dag"):
-        timer.pause()
+        timer.pause("DAG Analysis")
         plt.show()
-        timer.unpause()
+        timer.unpause("DAG Analysis")
     else:
         plt.clf()
 
+    timer.end("DAG Analysis")
+
     vis.run()
     vis.destroy_window()
+
+    timer.check_for_orphans()
 
 
 # === Script entry ===

@@ -6,6 +6,7 @@ import scipy.signal as signal
 import analysis_hough
 
 import settings
+import timer
 
 import util_cloud
 import util_histogram
@@ -60,7 +61,6 @@ def detect_beams(pc, aabb, axs=None):
 
 
 def _analyze_z_level(pc, aabb, axs=None):
-
     slice_points = np.asarray(pc.points)
 
     rel_height = 0.75  # Check the width near the bottom of the peak
@@ -101,7 +101,9 @@ def _analyze_z_level(pc, aabb, axs=None):
             beam_layers.append(layer)
 
     if len(beam_layers):
+        timer.pause("Beam Analysis")
         analysis_hough.analyze_by_hough_transform(pc, aabb)
+        timer.unpause("Beam Analysis")
 
     return beam_layers
 

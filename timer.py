@@ -1,38 +1,37 @@
 import time
 
-times = []
-timer_name = None
+timers = {}
 
 
 def start(name):
-    global times
-    global timer_name
-    times.append(time.time())
-    timer_name = name
+    timers[name] = []
+    timers[name].append(time.time())
 
 
-def end():
-    global timer_name
-    global times
+def end(name):
+    timers[name].append(time.time())
 
-    times.append(time.time())
-
-    if len(times) % 2 != 0:
+    if len(timers[name]) % 2 != 0:
         print("Timer : Bad time list count")
 
     total = 0
 
-    for i, j in zip(times[0::2], times[1::2]):
+    for i, j in zip(timers[name][0::2], timers[name][1::2]):
         total += (j - i)
 
-    print("{} completed in {} seconds".format(timer_name, round(total, 3)))
-    timer_name = None
-    times = []
+    print("{} completed in {} seconds".format(name, round(total, 3)))
+
+    del timers[name]
 
 
-def pause():
-    times.append(time.time())
+def pause(name):
+    timers[name].append(time.time())
 
 
-def unpause():
-    times.append(time.time())
+def unpause(name):
+    timers[name].append(time.time())
+
+
+def check_for_orphans():
+    for name in timers:
+        print("Note : Timer {} left open".format(name))
