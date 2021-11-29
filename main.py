@@ -20,12 +20,14 @@ import util_graph
 import util_histogram
 import util_cloud
 
+# === TODO ===
+# Refactor axs into global module
+# Draw and export alpha shapes for debug / documentation
 
 # === DEFINITIONS ===
 
 DG = nx.DiGraph()
 
-settings.write("display_histogram", False)
 settings.write("do_dag_highlighting", False)
 
 vis = None
@@ -118,7 +120,7 @@ def main():
 
     # Finalize the histogram plots
     plt.savefig(dir_output + filename + "_plot.png")
-    if settings.read("display_histogram"):
+    if settings.read("display.histogram"):
         timer.pause("Beam Analysis")
         plt.show()
         timer.unpause("Beam Analysis")

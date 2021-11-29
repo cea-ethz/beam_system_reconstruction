@@ -19,7 +19,10 @@ def load_user_settings():
         write("{}.{}".format(section, item), getattr(config[section], function_name)(item))
 
     load_setting("display", "dag", "getboolean")
+    load_setting("display", "histogram", "getboolean")
     load_setting("display", "hough", "getboolean")
+
+    load_setting("export", "alpha_shape", "getboolean")
 
     load_setting("verbosity", "floor_test", "getboolean")
 

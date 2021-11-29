@@ -1,9 +1,14 @@
+import alphashape
 import math
+import open3d as o3d
 import numpy as np
 import scipy.signal as signal
 
+import util_alpha_shape
 import util_cloud
 import util_histogram
+
+from descartes import PolygonPatch
 
 bin_width = 50
 
@@ -26,29 +31,38 @@ def analyze_walls(pc, aabb, axs, vis):
     util_histogram.render_bar(axs[0, 1], hist_x, hist_x_smooth, peaks_x)
     util_histogram.render_bar(axs[0, 2], hist_y, hist_y_smooth, peaks_y)
 
-    # TK NB if the split width is raised to 30 from 20 the dag drawing breaks?
+    axs[1,0].axis(xmin=-10000,xmax=10000,ymin=-1000,ymax=7000)
+
+
     for peak_x in peaks_x:
-        pc = handle_peak(pc, aabb, peak_x - 1, hist_x, bin_count_x, 0, vis)
+        pc = handle_peak(pc, aabb, peak_x - 1, hist_x_smooth, bin_count_x, 0, vis, axs[1,0])
 
     for peak_y in peaks_y:
-        pc = handle_peak(pc, aabb, peak_y - 1, hist_y, bin_count_y, 1, vis)
+        pc = handle_peak(pc, aabb, peak_y - 1, hist_y_smooth, bin_count_y, 1, vis, axs[1,0])
 
     return pc
 
 
-def handle_peak(pc, aabb, peak, hist, bin_count, axis, vis):
-    position, width = util_histogram.get_peak_slice_params(hist, peak, diff=0.4)
+def handle_peak(pc, aabb, peak, hist, bin_count, axis, vis,ax):
+    #np.savetxt("hist_{}.txt".format(peak), hist)
+    position, width = util_histogram.get_peak_slice_params(hist, peak, diff=0.2)
     position += 0.5
     #print("{} : {} : {}".format(peak, position / bin_count, width / bin_count))
+    #print(hist)
     peak_slice = util_cloud.get_slice(pc, aabb, axis, position / bin_count, width / bin_count, normalized=True)
-    peak_slice.paint_uniform_color((1,0,0))
+    peak_slice.paint_uniform_color((1, 0, 0))
     #vis.add_geometry(peak_slice)
     slice_points = np.asarray(peak_slice.points)
     mean = np.median(slice_points[:, axis])
+    # TK NB if the split width is raised to 30 from 20 the dag drawing breaks?
     interior, exterior = util_cloud.split_slice(pc, aabb, axis, mean, 30, normalized=False)
+    interior_points = np.asarray(interior.points)
 
-    interior.paint_uniform_color((1, 0, 1))
-    #vis.add_geometry(interior)
+    interior_points = util_cloud.flatten_to_axis(interior_points, axis)
 
-    return exterior
-
+    if util_alpha_shape.analyze_alpha_shape_density(interior_points, 0.75, "{}.png".format(peak)):
+        interior.paint_uniform_color((1, 0, 1))
+        vis.add_geometry(interior)
+        return exterior
+    else:
+        return pc

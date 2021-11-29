@@ -119,9 +119,11 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
         beam_slice = util_cloud.get_slice(pc, aabb, axis, slice_position / source_bin_count, slice_width / source_bin_count, normalized=True)
         beam_slice_points = np.array(beam_slice.points)
         beam_aabb = beam_slice.get_axis_aligned_bounding_box()
-        extent = beam_aabb.get_extent()
+        aabb_c = beam_aabb.get_center()
+        aabb_e = beam_aabb.get_extent()
+        aabb_he = beam_aabb.get_half_extent()
 
-        bin_count = math.ceil(beam_aabb.get_extent()[not_axis] / bin_width)
+        bin_count = math.ceil(aabb_e[not_axis] / bin_width)
         #print("Bin Count : {}".format(bin_count))
 
         beam_hist, _ = np.histogram(beam_slice_points[:, not_axis], bin_count)
@@ -129,7 +131,7 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
 
         # Count out from the median value
         median = np.median(beam_slice_points[:, not_axis])
-        median_bin = int((median - (beam_aabb.get_center()[not_axis] - beam_aabb.get_half_extent()[not_axis])) / beam_aabb.get_extent()[not_axis] * bin_count)
+        median_bin = int((median - (aabb_c[not_axis] - aabb_he[not_axis])) / aabb_e[not_axis] * bin_count)
         #print("Median {} in {} to {}".format(median,beam_aabb.get_center()[not_axis] - beam_aabb.get_half_extent()[not_axis],beam_aabb.get_center()[not_axis] + beam_aabb.get_half_extent()[not_axis]))
         #print("Median bin : " + str(median_bin))
         low = median_bin

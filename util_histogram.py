@@ -14,13 +14,15 @@ def smooth_histogram(hist, extension=1):
     """Apply simple smoothing by setting each each histogram value to the total of its neighborhood"""
     # Ugly for now but meh, doesn't account for first and last positions
     hist_copy = np.copy(hist)
+    min = 1
     for i in range(len(hist)):
         hist[i] = 0
         for j in range(-extension, extension + 1):
             new_i = i + j
+            f = (1 - (abs(j) / extension)) * (1 - min) + min
             if new_i < 0 or new_i >= len(hist):
                 continue
-            hist[i] += hist_copy[new_i]
+            hist[i] += hist_copy[new_i] * f
     return hist
 
 

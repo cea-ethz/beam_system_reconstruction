@@ -72,6 +72,19 @@ def flatten_cloud(pc):
     return pc
 
 
+def flatten_to_axis(point_array, axis):
+    ip_new = np.zeros((len(point_array), 2))
+
+    if axis == 0:
+        ip_new[:, 0] = point_array[:, 1]
+        ip_new[:, 1] = point_array[:, 2]
+    else:
+        ip_new[:, 0] = point_array[:, 0]
+        ip_new[:, 1] = point_array[:, 2]
+
+    return ip_new
+
+
 def split_by_labels(pc, labels, salt_z_axis = True):
     """
     Returns a new cloud for each unique label.
@@ -119,6 +132,10 @@ def check_aabb_overlap_2d(a, b):
     half_b = b.get_half_extent()
 
     return abs(center_a[0] - center_b[0]) < half_a[0] + half_b[0] and abs(center_a[1] - center_b[1]) < half_a[1] + half_b[1]
+
+
+
+
 
 
 
