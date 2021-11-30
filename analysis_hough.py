@@ -28,9 +28,13 @@ def analyze_by_hough_transform(pc, aabb):
     accumulator = np.float32(accumulator)
     accumulator *= 255
 
+    cv2.imwrite("accumulator.png", accumulator)
+
     ret, accumulator = cv2.threshold(accumulator, 22, 255, cv2.THRESH_BINARY)
 
     output = cv2.cvtColor(accumulator, cv2.COLOR_GRAY2BGR)
+
+
 
     edges = skimage.feature.canny(accumulator, 2, 1, 25)
     lines = skimage.transform.probabilistic_hough_line(edges, threshold=10, line_length=5, line_gap=3)

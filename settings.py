@@ -28,7 +28,10 @@ def load_user_settings():
 
     load_setting("visibility", "beams_final", "getboolean")
     load_setting("visibility", "beams_rejected", "getboolean")
+    load_setting("visibility", "column_clusters", "getboolean")
+    load_setting("visibility", "columns_final", "getboolean")
     load_setting("visibility", "split_points", "getboolean")
     load_setting("visibility", "walls_extracted", "getboolean")
     load_setting("visibility", "world_axis", "getboolean")
+    load_setting("visibility", "world_aabb", "getboolean")
 

@@ -87,7 +87,8 @@ def main():
     # Calculate aabb for main cloud
     aabb_main = pc_main.get_axis_aligned_bounding_box()
     aabb_main.color = (1, 0, 0)
-    vis.add_geometry(aabb_main)
+    if settings.read("visibility.world_aabb"):
+        vis.add_geometry(aabb_main)
 
     # Add coordinate system to scene
     if settings.read("visibility.world_axis"):
@@ -156,9 +157,10 @@ def main():
         z_extents = (z_min, beam_layer_primary.average_z)
         columns = analysis_columns.analyze_columns(pc_column, aabb_column, pc_main, aabb_main, beam_layer_primary.beams, z_extents, vis)
 
-        for column in columns:
-            vis.add_geometry(column.pc)
-            vis.add_geometry(column.aabb)
+        if settings.read("visibility.columns_final"):
+            for column in columns:
+                vis.add_geometry(column.pc)
+                vis.add_geometry(column.aabb)
     timer.end("Column Analysis")
 
     # === Construct DAG Diagram ===
@@ -214,9 +216,9 @@ def main():
         edge_colors = ['black'] * len(DG.edges)
         edge_colors[util_graph.get_edge_id(DG, secondary_node_id, primary_node_id)] = 'red'
 
-        nx.draw(DG, pos, node_color=node_colors, edge_color=edge_colors, labels=labels, with_labels=True, node_size=300)
+        nx.draw(DG, pos, node_color=node_colors, edge_color=edge_colors, labels=labels, with_labels=True, node_size=450,font_color="white")
     else:
-        nx.draw(DG, pos, labels=labels, with_labels=True, node_size=300)
+        nx.draw(DG, pos, labels=labels, with_labels=True, node_size=450, font_color="white")
 
     plt.savefig(dir_output + filename + "_graph.png")
     if settings.read("display.dag"):

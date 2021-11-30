@@ -156,7 +156,7 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count,axs
             dumb_flag = True
             util_histogram.render_bar(axs[1,0],None,beam_hist,[])
 
-        print("{} -> {}".format(low,high))
+        #print("{} -> {}".format(low,high))
 
         beam_slice = util_cloud.get_slice(beam_slice, beam_aabb, not_axis, slice_position / bin_count, slice_width / bin_count, normalized=True)
         beam_aabb = beam_slice.get_axis_aligned_bounding_box()

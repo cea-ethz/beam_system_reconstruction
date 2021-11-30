@@ -85,7 +85,7 @@ def flatten_to_axis(point_array, axis):
     return ip_new
 
 
-def split_by_labels(pc, labels, salt_z_axis = True):
+def split_by_labels(pc, labels, salt_z_axis=True):
     """
     Returns a new cloud for each unique label.
 
@@ -112,7 +112,9 @@ def split_by_labels(pc, labels, salt_z_axis = True):
         sub_colors = colors[inclusion]
 
         if salt_z_axis:
-            sub_points[-1,2] = 0.001
+            #sub_points[-1, 2] = 0.001
+            sub_points[-0, 2] = -5
+            sub_points[-1, 2] = 5
 
         cloud = o3d.geometry.PointCloud()
 
@@ -131,12 +133,5 @@ def check_aabb_overlap_2d(a, b):
     half_a = a.get_half_extent()
     half_b = b.get_half_extent()
 
-    return abs(center_a[0] - center_b[0]) < half_a[0] + half_b[0] and abs(center_a[1] - center_b[1]) < half_a[1] + half_b[1]
-
-
-
-
-
-
-
-
+    return abs(center_a[0] - center_b[0]) < half_a[0] + half_b[0] and abs(center_a[1] - center_b[1]) < half_a[1] + \
+           half_b[1]
