@@ -1,6 +1,7 @@
-from matplotlib import pyplot as plt
 import numpy as np
 import open3d as o3d
+
+from matplotlib import pyplot as plt
 
 import settings
 import util_cloud
@@ -8,12 +9,10 @@ import util_cloud
 from BIM_Geometry import Column
 
 
-def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams,z_extents, vis):
+def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams, z_extents, vis):
     pc_flat = util_cloud.flatten_cloud(pc)
 
-    with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Info) as cm:
-        # labels = np.array(pc_flat.cluster_dbscan(eps=0.02, min_points=10, print_progress=True))
-        labels = np.array(pc_flat.cluster_dbscan(eps=12, min_points=10, print_progress=True))
+    labels = np.array(pc_flat.cluster_dbscan(eps=12, min_points=10))
 
     # If column detection failed
     if len(labels) == 0:
@@ -39,13 +38,12 @@ def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams,z_extents, vis):
             vis.add_geometry(subcloud)
             vis.add_geometry(aabb_subcloud)
 
-
         # Test candidates for correct dimensions
         if extent[0] < 500 and extent[1] < 500 and extent_max / extent_min < 2:
 
             # Ensure that candidates touch at least one primary layer beam
             for beam in primary_beams:
-                if util_cloud.check_aabb_overlap_2d(aabb_subcloud,beam.aabb):
+                if util_cloud.check_aabb_overlap_2d(aabb_subcloud, beam.aabb):
                     column = Column(aabb_subcloud.get_center())
                     column.child_beams.append(beam)
                     output_columns.append(column)
@@ -63,7 +61,7 @@ def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams,z_extents, vis):
         crop_max[0] += 100
         crop_max[1] += 100
         crop_max[2] = z_extents[1]
-        crop = o3d.geometry.AxisAlignedBoundingBox(crop_min,crop_max)
+        crop = o3d.geometry.AxisAlignedBoundingBox(crop_min, crop_max)
 
         column.pc = pc_main.crop(crop)
         column.aabb = column.pc.get_axis_aligned_bounding_box()
