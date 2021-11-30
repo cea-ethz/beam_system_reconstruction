@@ -1,3 +1,4 @@
+import cv2
 import networkx as nx
 import numpy as np
 import open3d as o3d
@@ -8,16 +9,15 @@ import shelve
 from matplotlib import pyplot as plt
 from tkinter import filedialog
 
-
 import analysis_beams
 import analysis_columns
+import analysis_hough
 import analysis_walls
 
 import settings
 import timer
 
 import util_graph
-import util_histogram
 import util_cloud
 
 # === TODO ===
@@ -148,8 +148,15 @@ def main():
             vis.add_geometry(beam.aabb)
 
     # Export cross sections
+    if not os.path.exists(dir_output + "cross_sections/"):
+        os.makedirs(dir_output + "cross_sections/")
     for beam in beam_layer_primary.beams:
-        flat = util_cloud.flatten_to_axis(np.array(beam.cloud.points), beam.axis)
+
+        flat = util_cloud.flatten_to_axis(np.array(beam.cloud.points), int(not beam.axis))
+        print(flat.shape)
+        img = analysis_hough.cloud_to_accumulator(flat ,beam.cloud.get_axis_aligned_bounding_box())
+        print(img.shape)
+        cv2.imwrite(dir_output + "cross_sections/" + str(beam.id) + ".png", img)
 
     timer.end("Beam Analysis")
 

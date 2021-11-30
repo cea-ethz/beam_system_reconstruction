@@ -7,7 +7,7 @@ import settings
 import timer
 
 
-def cloud_to_accumulator(pc, aabb):
+def cloud_to_accumulator(points, aabb):
     scale = 8
 
     min_bound = aabb.get_min_bound()
@@ -16,7 +16,6 @@ def cloud_to_accumulator(pc, aabb):
 
     accumulator = np.zeros((int(aabb.get_extent()[0]) // scale, int(aabb.get_extent()[1]) // scale))
 
-    points = np.asarray(pc.points)
     for point in points:
         x = int((point[0] - min_bound[0]) // scale)
         y = int((point[1] - min_bound[1]) // scale)
@@ -33,7 +32,7 @@ def cloud_to_accumulator(pc, aabb):
 def analyze_by_hough_transform(pc, aabb):
     timer.start("Hough Analysis")
 
-    accumulator = cloud_to_accumulator(pc, aabb)
+    accumulator = cloud_to_accumulator(np.array(pc.points), aabb)
 
     cv2.imwrite("accumulator.png", accumulator)
 
