@@ -22,7 +22,7 @@ import util_cloud
 
 # === TODO ===
 # Refactor axs into global module
-# Draw and export alpha shapes for debug / documentation
+# Draw and export column images for debug / documentation
 
 # === DEFINITIONS ===
 

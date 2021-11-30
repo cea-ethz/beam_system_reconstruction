@@ -34,6 +34,8 @@ def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams,z_extents, vis):
         extent_max = max(extent[0], extent[1])
         extent_min = min(extent[0], extent[1])
 
+        vis.add_geometry(subcloud)
+
         # Test candidates for correct dimensions
         if extent[0] < 500 and extent[1] < 500 and extent_max / extent_min < 2:
 

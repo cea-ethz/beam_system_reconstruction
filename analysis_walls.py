@@ -1,4 +1,3 @@
-import alphashape
 import math
 import open3d as o3d
 import numpy as np
@@ -8,7 +7,7 @@ import util_alpha_shape
 import util_cloud
 import util_histogram
 
-from descartes import PolygonPatch
+import settings
 
 bin_width = 50
 
@@ -31,7 +30,7 @@ def analyze_walls(pc, aabb, axs, vis):
     util_histogram.render_bar(axs[0, 1], hist_x, hist_x_smooth, peaks_x)
     util_histogram.render_bar(axs[0, 2], hist_y, hist_y_smooth, peaks_y)
 
-    axs[1,0].axis(xmin=-10000,xmax=10000,ymin=-1000,ymax=7000)
+    #axs[1,0].axis(xmin=-10000,xmax=10000,ymin=-1000,ymax=7000)
 
 
     for peak_x in peaks_x:
@@ -55,14 +54,15 @@ def handle_peak(pc, aabb, peak, hist, bin_count, axis, vis,ax):
     slice_points = np.asarray(peak_slice.points)
     mean = np.median(slice_points[:, axis])
     # TK NB if the split width is raised to 30 from 20 the dag drawing breaks?
-    interior, exterior = util_cloud.split_slice(pc, aabb, axis, mean, 30, normalized=False)
+    interior, exterior = util_cloud.split_slice(pc, aabb, axis, mean, 40, normalized=False)
     interior_points = np.asarray(interior.points)
 
     interior_points = util_cloud.flatten_to_axis(interior_points, axis)
 
-    if util_alpha_shape.analyze_alpha_shape_density(interior_points, 0.75, "{}.png".format(peak)):
+    if util_alpha_shape.analyze_alpha_shape_density2(interior_points, 0.75, "{}.png".format(peak)):
         interior.paint_uniform_color((1, 0, 1))
-        vis.add_geometry(interior)
+        if settings.read("visibility.walls_extracted"):
+            vis.add_geometry(interior)
         return exterior
     else:
         return pc

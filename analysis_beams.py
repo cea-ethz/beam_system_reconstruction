@@ -18,6 +18,8 @@ bin_width = 50
 
 variance_split = 0.075
 
+dumb_flag = False
+
 
 def detect_beams(pc, aabb, axs=None):
     points = np.asarray(pc.points)
@@ -92,12 +94,11 @@ def _analyze_z_level(pc, aabb, axs=None):
     beam_layers = []
     if variance_x < variance_split or variance_y < variance_split:
         # Plot X and Y histograms
-        util_histogram.render_bar(axs[1, 1], hist_x, hist_x_smooth, peaks_x)
-        util_histogram.render_bar(axs[1, 2], hist_y, hist_y_smooth, peaks_y)
-
-        if layer := _analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x):
+        if layer := _analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x,axs):
+            util_histogram.render_bar(axs[1, 1], hist_x, hist_x_smooth, peaks_x)
             beam_layers.append(layer)
-        if layer := _analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y):
+        if layer := _analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y,axs):
+            util_histogram.render_bar(axs[1, 2], hist_y, hist_y_smooth, peaks_y)
             beam_layers.append(layer)
 
     if len(beam_layers):
@@ -108,13 +109,15 @@ def _analyze_z_level(pc, aabb, axs=None):
     return beam_layers
 
 
-def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
+def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count,axs=None):
     not_axis = int(not axis)
+
+    global dumb_flag
 
     layer = BeamSystemLayer()
 
     for peak in peaks:
-        slice_position, slice_width = util_histogram.get_peak_slice_params(hist, peak, 0.1)
+        slice_position, slice_width = util_histogram.get_peak_slice_params(hist, peak, 0.15) # This drop either cuts off too much of an end value or allows the other beams to get oo large
 
         beam_slice = util_cloud.get_slice(pc, aabb, axis, slice_position / source_bin_count, slice_width / source_bin_count, normalized=True)
         beam_slice_points = np.array(beam_slice.points)
@@ -127,14 +130,14 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
         #print("Bin Count : {}".format(bin_count))
 
         beam_hist, _ = np.histogram(beam_slice_points[:, not_axis], bin_count)
-        beam_hist = util_histogram.smooth_histogram(beam_hist, 1)
+        beam_hist = util_histogram.smooth_histogram(beam_hist, 2)
 
         # Count out from the median value
         median = np.median(beam_slice_points[:, not_axis])
         median_bin = int((median - (aabb_c[not_axis] - aabb_he[not_axis])) / aabb_e[not_axis] * bin_count)
         #print("Median {} in {} to {}".format(median,beam_aabb.get_center()[not_axis] - beam_aabb.get_half_extent()[not_axis],beam_aabb.get_center()[not_axis] + beam_aabb.get_half_extent()[not_axis]))
         #print("Median bin : " + str(median_bin))
-        low = median_bin
+        low = median_bin - 1
         high = median_bin + 1
         for i in range(low, -1, -1):
             if beam_hist[i] > 0:
@@ -149,7 +152,13 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
         slice_width = high - low
         slice_position = slice_width / 2 + low
 
-        beam_slice = util_cloud.get_slice(beam_slice, beam_aabb, int(not axis), slice_position / bin_count, slice_width / bin_count, normalized=True)
+        if dumb_flag == False:
+            dumb_flag = True
+            util_histogram.render_bar(axs[1,0],None,beam_hist,[])
+
+        print("{} -> {}".format(low,high))
+
+        beam_slice = util_cloud.get_slice(beam_slice, beam_aabb, not_axis, slice_position / bin_count, slice_width / bin_count, normalized=True)
         beam_aabb = beam_slice.get_axis_aligned_bounding_box()
         #beam_aabb.color = (0, 1, 1) if axis else (1, 0, 1)
 
