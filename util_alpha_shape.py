@@ -18,6 +18,7 @@ def analyze_alpha_shape_density(points, density=0.75, name="alpha"):
 
     return area_factor > density
 
+
 def export_alpha_shapes(points, shape_fore, shape_back, name):
     min_x = int(min(shape_fore.bounds[0], shape_back.bounds[0]))
     min_y = int(min(shape_fore.bounds[1], shape_back.bounds[1]))

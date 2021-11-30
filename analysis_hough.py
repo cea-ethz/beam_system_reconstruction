@@ -7,8 +7,7 @@ import settings
 import timer
 
 
-def analyze_by_hough_transform(pc, aabb):
-    timer.start("Hough Analysis")
+def cloud_to_accumulator(pc, aabb):
     scale = 8
 
     min_bound = aabb.get_min_bound()
@@ -27,6 +26,14 @@ def analyze_by_hough_transform(pc, aabb):
     accumulator /= np.max(accumulator)
     accumulator = np.float32(accumulator)
     accumulator *= 255
+
+    return accumulator
+
+
+def analyze_by_hough_transform(pc, aabb):
+    timer.start("Hough Analysis")
+
+    accumulator = cloud_to_accumulator(pc, aabb)
 
     cv2.imwrite("accumulator.png", accumulator)
 

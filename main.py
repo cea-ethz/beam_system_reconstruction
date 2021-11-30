@@ -138,6 +138,7 @@ def main():
     beam_layer_primary = beam_layers[primary_id]
     beam_layer_secondary = analysis_beams.perform_beam_splits(beam_layers[primary_id], beam_layers[int(not primary_id)], vis)
 
+    # Add final beam visuals to scene
     if settings.read("visibility.beams_final"):
         for beam in beam_layer_primary.beams:
             vis.add_geometry(beam.cloud)
@@ -145,6 +146,10 @@ def main():
         for beam in beam_layer_secondary.beams:
             vis.add_geometry(beam.cloud)
             vis.add_geometry(beam.aabb)
+
+    # Export cross sections
+    for beam in beam_layer_primary.beams:
+        flat = util_cloud.flatten_to_axis(np.array(beam.cloud.points), beam.axis)
 
     timer.end("Beam Analysis")
 

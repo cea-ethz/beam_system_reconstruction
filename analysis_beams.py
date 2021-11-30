@@ -156,15 +156,11 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count,axs
             dumb_flag = True
             util_histogram.render_bar(axs[1,0],None,beam_hist,[])
 
-        #print("{} -> {}".format(low,high))
-
         beam_slice = util_cloud.get_slice(beam_slice, beam_aabb, not_axis, slice_position / bin_count, slice_width / bin_count, normalized=True)
         beam_aabb = beam_slice.get_axis_aligned_bounding_box()
-        #beam_aabb.color = (0, 1, 1) if axis else (1, 0, 1)
 
         layer.add_beam(Beam(beam_aabb, axis, beam_slice))
-        #vis.add_geometry(beam_slice)
-        #vis.add_geometry(beam_aabb)
+
     if len(layer.beams):
         layer.finalize()
     else:
