@@ -4,10 +4,9 @@ import open3d as o3d
 import scipy.signal as signal
 
 import analysis_hough
-
 import settings
 import timer
-
+import ui
 import util_cloud
 import util_histogram
 
@@ -21,7 +20,7 @@ variance_split = 0.075
 dumb_flag = False
 
 
-def detect_beams(pc, aabb, axs=None):
+def detect_beams(pc, aabb):
     points = np.asarray(pc.points)
 
     bin_count_z = math.ceil(aabb.get_extent()[2] / bin_width)
@@ -35,7 +34,7 @@ def detect_beams(pc, aabb, axs=None):
         print("Error : No Z peaks found")
         print(hist_z)
 
-    util_histogram.render_bar(axs[0, 0], hist_z, hist_z_smooth, peaks)
+    util_histogram.render_bar(ui.axs[0, 0], hist_z, hist_z_smooth, peaks)
 
     beam_layers = []
     column_slice_positions = []
@@ -50,7 +49,7 @@ def detect_beams(pc, aabb, axs=None):
         pc_slice = util_cloud.get_slice(pc, aabb, 2, peak_slice_position / bin_count_z, peak_slice_width / bin_count_z, normalized=True)
         pc_slice_aabb = pc_slice.get_axis_aligned_bounding_box()
 
-        new_levels = _analyze_z_level(pc_slice, pc_slice_aabb, axs)
+        new_levels = _analyze_z_level(pc_slice, pc_slice_aabb)
         beam_layers += new_levels
 
         # If the peak is a beam system, record the real position 1 meter below the slice to start analyzing for columns
@@ -62,7 +61,7 @@ def detect_beams(pc, aabb, axs=None):
     return beam_layers, column_slice_positions, floor_levels
 
 
-def _analyze_z_level(pc, aabb, axs=None):
+def _analyze_z_level(pc, aabb):
     slice_points = np.asarray(pc.points)
 
     rel_height = 0.75  # Check the width near the bottom of the peak
@@ -94,11 +93,11 @@ def _analyze_z_level(pc, aabb, axs=None):
     beam_layers = []
     if variance_x < variance_split or variance_y < variance_split:
         # Plot X and Y histograms
-        if layer := _analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x,axs):
-            util_histogram.render_bar(axs[1, 1], hist_x, hist_x_smooth, peaks_x)
+        if layer := _analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x):
+            util_histogram.render_bar(ui.axs[1, 1], hist_x, hist_x_smooth, peaks_x)
             beam_layers.append(layer)
-        if layer := _analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y,axs):
-            util_histogram.render_bar(axs[1, 2], hist_y, hist_y_smooth, peaks_y)
+        if layer := _analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y):
+            util_histogram.render_bar(ui.axs[1, 2], hist_y, hist_y_smooth, peaks_y)
             beam_layers.append(layer)
 
     if len(beam_layers):
@@ -109,7 +108,7 @@ def _analyze_z_level(pc, aabb, axs=None):
     return beam_layers
 
 
-def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count,axs=None):
+def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
     not_axis = int(not axis)
 
     global dumb_flag
@@ -152,9 +151,9 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count,axs
         slice_width = high - low
         slice_position = slice_width / 2 + low
 
-        if dumb_flag == False:
+        if not dumb_flag:
             dumb_flag = True
-            util_histogram.render_bar(axs[1,0],None,beam_hist,[])
+            util_histogram.render_bar(ui.axs[1, 0], None, beam_hist, [])
 
         beam_slice = util_cloud.get_slice(beam_slice, beam_aabb, not_axis, slice_position / bin_count, slice_width / bin_count, normalized=True)
         beam_aabb = beam_slice.get_axis_aligned_bounding_box()
@@ -168,7 +167,7 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count,axs
     return layer
 
 
-def perform_beam_splits(primary_layer, secondary_layer, vis=None):
+def perform_beam_splits(primary_layer, secondary_layer):
     # Perhaps we need to check for actual intersection first but for now theres no issues
     new_secondary = BeamSystemLayer()
     while len(secondary_layer.beams) > 0:
@@ -188,7 +187,7 @@ def perform_beam_splits(primary_layer, secondary_layer, vis=None):
                         sphere = o3d.geometry.TriangleMesh.create_sphere(radius=50)
                         sphere.translate(split_point)
                         sphere.paint_uniform_color((1, 0, 0))
-                        vis.add_geometry(sphere)
+                        ui.vis.add_geometry(sphere)
 
                     flag = True
                     new_a, new_b = sb.split(location)
@@ -196,13 +195,13 @@ def perform_beam_splits(primary_layer, secondary_layer, vis=None):
                         secondary_layer.beams.append(new_a)
                     elif settings.read("visibility.beams_rejected"):
                         new_a.aabb.color = (1, 0, 1)
-                        vis.add_geometry(new_a.aabb)
+                        ui.vis.add_geometry(new_a.aabb)
 
                     if new_b.length > 500:
                         secondary_layer.beams.append(new_b)
                     elif settings.read("visibility.beams_rejected"):
                         new_b.aabb.color = (1, 0, 1)
-                        vis.add_geometry(new_b.aabb)
+                        ui.vis.add_geometry(new_b.aabb)
 
                     break
         if not flag:

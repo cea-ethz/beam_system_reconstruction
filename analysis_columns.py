@@ -3,13 +3,14 @@ import open3d as o3d
 
 from matplotlib import pyplot as plt
 
+import ui
 import settings
 import util_cloud
 
 from BIM_Geometry import Column
 
 
-def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams, z_extents, vis):
+def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams, z_extents):
     pc_flat = util_cloud.flatten_cloud(pc)
 
     labels = np.array(pc_flat.cluster_dbscan(eps=12, min_points=10))
@@ -35,8 +36,8 @@ def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams, z_extents, vis)
         extent_min = min(extent[0], extent[1])
 
         if settings.read("visibility.column_clusters"):
-            vis.add_geometry(subcloud)
-            vis.add_geometry(aabb_subcloud)
+            ui.vis.add_geometry(subcloud)
+            ui.vis.add_geometry(aabb_subcloud)
 
         # Test candidates for correct dimensions
         if extent[0] < 500 and extent[1] < 500 and extent_max / extent_min < 2:

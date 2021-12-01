@@ -13,10 +13,9 @@ import analysis_beams
 import analysis_columns
 import analysis_hough
 import analysis_walls
-
 import settings
 import timer
-
+import ui
 import util_graph
 import util_cloud
 
@@ -29,9 +28,6 @@ import util_cloud
 DG = nx.DiGraph()
 
 settings.write("do_dag_highlighting", False)
-
-vis = None
-
 
 def set_up_vector(vis):
     vis.get_view_control().set_up((0.001, 0.000, 0.9999))
@@ -49,7 +45,6 @@ def setup_vis():
 
 
 def main():
-    global vis
 
     settings.load_user_settings()
 
@@ -63,19 +58,19 @@ def main():
     dirname = os.path.dirname(filepath) + "/"
     basename = os.path.basename(filepath)
     filename = os.path.splitext(basename)[0]
-    dir_output = dirname + filename + "/"
+    ui.dir_output = dirname + filename + "/"
 
     with shelve.open("settings") as db:
         db['initial_dirname'] = dirname
 
-    if not os.path.exists(dir_output):
-        os.makedirs(dir_output)
+    if not os.path.exists(ui.dir_output):
+        os.makedirs(ui.dir_output)
 
-    project_data = shelve.open(dir_output + filename)
+    project_data = shelve.open(ui.dir_output + filename)
     project_data["test"] = 2
     project_data.close()
 
-    vis = setup_vis()
+    ui.vis = setup_vis()
 
     # Load cloud from file
     timer.start("Read Cloud")
@@ -88,39 +83,39 @@ def main():
     aabb_main = pc_main.get_axis_aligned_bounding_box()
     aabb_main.color = (1, 0, 0)
     if settings.read("visibility.world_aabb"):
-        vis.add_geometry(aabb_main)
+        ui.vis.add_geometry(aabb_main)
 
     # Add coordinate system to scene
     if settings.read("visibility.world_axis"):
         mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1000, origin=[0, 0, 0])
-        vis.add_geometry(mesh_frame)
+        ui.vis.add_geometry(mesh_frame)
 
     # Setup histogram diagram
     px = 1 / plt.rcParams['figure.dpi']  # pixel in inches
-    fig, axs = plt.subplots(2, 3, figsize=(1800*px, 1200*px))
+    fig, ui.axs = plt.subplots(2, 3, figsize=(1800*px, 1200*px))
     plt.tight_layout(h_pad=3.0)
     plt.subplots_adjust(left=0.05, bottom=0.10)
 
-    plt.setp(axs[0, 0], ylabel="Normalized Point Density")
-    plt.setp(axs[0, 0], xlabel='Z Axis Bins')
-    plt.setp(axs[0, 1], xlabel='X Axis Bins')
-    plt.setp(axs[0, 2], xlabel='Y Axis Bins')
+    plt.setp(ui.axs[0, 0], ylabel="Normalized Point Density")
+    plt.setp(ui.axs[0, 0], xlabel='Z Axis Bins')
+    plt.setp(ui.axs[0, 1], xlabel='X Axis Bins')
+    plt.setp(ui.axs[0, 2], xlabel='Y Axis Bins')
 
-    plt.setp(axs[1, 0], ylabel="Normalized Point Density")
-    plt.setp(axs[1, 1], xlabel='X Axis Bins')
-    plt.setp(axs[1, 2], xlabel='Y Axis Bins')
+    plt.setp(ui.axs[1, 0], ylabel="Normalized Point Density")
+    plt.setp(ui.axs[1, 1], xlabel='X Axis Bins')
+    plt.setp(ui.axs[1, 2], xlabel='Y Axis Bins')
 
     # === Check for walls ===
     timer.start("Wall Analysis")
-    pc_main = analysis_walls.analyze_walls(pc_main, aabb_main, axs, vis)
+    pc_main = analysis_walls.analyze_walls(pc_main, aabb_main)
     timer.end("Wall Analysis")
 
     # === Perform main beam analysis ===
     timer.start("Beam Analysis")
-    beam_layers, column_slice_positions, floor_levels = analysis_beams.detect_beams(pc_main, aabb_main, axs)
+    beam_layers, column_slice_positions, floor_levels = analysis_beams.detect_beams(pc_main, aabb_main)
 
     # Finalize the histogram plots
-    plt.savefig(dir_output + filename + "_plot.png")
+    plt.savefig(ui.dir_output + filename + "_plot.png")
     if settings.read("display.histogram"):
         timer.pause("Beam Analysis")
         plt.show()
@@ -136,20 +131,20 @@ def main():
 
     primary_id = int(beam_layers[0].mean_spacing < beam_layers[1].mean_spacing)
     beam_layer_primary = beam_layers[primary_id]
-    beam_layer_secondary = analysis_beams.perform_beam_splits(beam_layers[primary_id], beam_layers[int(not primary_id)], vis)
+    beam_layer_secondary = analysis_beams.perform_beam_splits(beam_layers[primary_id], beam_layers[int(not primary_id)])
 
     # Add final beam visuals to scene
     if settings.read("visibility.beams_final"):
         for beam in beam_layer_primary.beams:
-            vis.add_geometry(beam.cloud)
-            vis.add_geometry(beam.aabb)
+            ui.vis.add_geometry(beam.cloud)
+            ui.vis.add_geometry(beam.aabb)
         for beam in beam_layer_secondary.beams:
-            vis.add_geometry(beam.cloud)
-            vis.add_geometry(beam.aabb)
+            ui.vis.add_geometry(beam.cloud)
+            ui.vis.add_geometry(beam.aabb)
 
     # Export cross sections
-    if not os.path.exists(dir_output + "cross_sections/"):
-        os.makedirs(dir_output + "cross_sections/")
+    if not os.path.exists(ui.dir_output + "cross_sections/"):
+        os.makedirs(ui.dir_output + "cross_sections/")
     for beam in beam_layer_primary.beams:
         points = np.array(beam.cloud.points)
         flat_cloud = o3d.geometry.PointCloud()
@@ -161,7 +156,7 @@ def main():
         img = cv2.transpose(img)
         #img = cv2.threshold()
         print(img.shape)
-        cv2.imwrite(dir_output + "cross_sections/" + str(beam.id) + ".png", img)
+        cv2.imwrite(ui.dir_output + "cross_sections/" + str(beam.id) + ".png", img)
 
     timer.end("Beam Analysis")
 
@@ -172,12 +167,12 @@ def main():
         aabb_column = pc_column.get_axis_aligned_bounding_box()
         z_min = floor_levels[0] + 50 if len(floor_levels) else aabb_main.get_min_bound()[2]
         z_extents = (z_min, beam_layer_primary.average_z)
-        columns = analysis_columns.analyze_columns(pc_column, aabb_column, pc_main, aabb_main, beam_layer_primary.beams, z_extents, vis)
+        columns = analysis_columns.analyze_columns(pc_column, aabb_column, pc_main, aabb_main, beam_layer_primary.beams, z_extents)
 
         if settings.read("visibility.columns_final"):
             for column in columns:
-                vis.add_geometry(column.pc)
-                vis.add_geometry(column.aabb)
+                ui.vis.add_geometry(column.pc)
+                ui.vis.add_geometry(column.aabb)
     timer.end("Column Analysis")
 
     # === Construct DAG Diagram ===
@@ -237,7 +232,7 @@ def main():
     else:
         nx.draw(DG, pos, labels=labels, with_labels=True, node_size=450, font_color="white")
 
-    plt.savefig(dir_output + filename + "_graph.png")
+    plt.savefig(ui.dir_output + filename + "_graph.png")
     if settings.read("display.dag"):
         timer.pause("DAG Analysis")
         plt.show()
@@ -247,8 +242,8 @@ def main():
 
     timer.end("DAG Analysis")
 
-    vis.run()
-    vis.destroy_window()
+    ui.vis.run()
+    ui.vis.destroy_window()
 
     timer.check_for_orphans()
 
