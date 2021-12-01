@@ -44,7 +44,7 @@ def detect_beams(pc, aabb, axs=None):
 
     for i, peak in enumerate(peaks):
         # Get extents of peak
-        peak_slice_position, peak_slice_width = util_histogram.get_peak_slice_params(hist_z_smooth, peak, 0.1)
+        peak_slice_position, peak_slice_width = util_histogram.get_peak_slice_params(hist_z_smooth, peak, 0.2)
 
         # Get slice at Z height
         pc_slice = util_cloud.get_slice(pc, aabb, 2, peak_slice_position / bin_count_z, peak_slice_width / bin_count_z, normalized=True)

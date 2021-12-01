@@ -64,7 +64,8 @@ def export_alpha_shapes(points, shape_fore, shape_back, name):
 
 
 def analyze_alpha_shape_density2(points, density=0.75, name="alpha"):
-    alpha_hull = alphashape.alphashape(points, 0.005)
+    #alpha_hull = alphashape.alphashape(points, 0.005)
+    alpha_hull = alphashape.alphashape(points, 0)
 
     w = int(alpha_hull.bounds[2] - alpha_hull.bounds[0]) + 2
     h = int(alpha_hull.bounds[3] - alpha_hull.bounds[1]) + 2
@@ -94,6 +95,8 @@ def analyze_alpha_shape_density2(points, density=0.75, name="alpha"):
         img2[x - 20:x + 20, y - 20:y + 20] = 255
 
     white_count = np.count_nonzero(img2 == 255)
+
+    #white_count = len(points) * 1600
     density_factor = white_count / alpha_hull.area
     print(density_factor)
 

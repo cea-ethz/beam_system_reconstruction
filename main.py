@@ -151,10 +151,15 @@ def main():
     if not os.path.exists(dir_output + "cross_sections/"):
         os.makedirs(dir_output + "cross_sections/")
     for beam in beam_layer_primary.beams:
-
-        flat = util_cloud.flatten_to_axis(np.array(beam.cloud.points), int(not beam.axis))
-        print(flat.shape)
-        img = analysis_hough.cloud_to_accumulator(flat ,beam.cloud.get_axis_aligned_bounding_box())
+        points = np.array(beam.cloud.points)
+        flat_cloud = o3d.geometry.PointCloud()
+        points_2d = util_cloud.flatten_to_axis(points, int(not beam.axis))
+        points_3d = np.zeros((points_2d.shape[0], 3))
+        points_3d[:, 0:2] = points_2d
+        flat_cloud.points = o3d.utility.Vector3dVector(points_3d)
+        img = analysis_hough.cloud_to_accumulator(np.array(flat_cloud.points), flat_cloud.get_axis_aligned_bounding_box(), scale=2)
+        img = cv2.transpose(img)
+        #img = cv2.threshold()
         print(img.shape)
         cv2.imwrite(dir_output + "cross_sections/" + str(beam.id) + ".png", img)
 

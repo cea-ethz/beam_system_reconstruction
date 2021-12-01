@@ -6,10 +6,16 @@ import skimage.transform
 import settings
 import timer
 
+class Segment():
+    def __init__(self):
+        pass
 
-def cloud_to_accumulator(points, aabb):
-    scale = 8
+class Strand(Segment):
+    def __init__(self):
+        pass
 
+
+def cloud_to_accumulator(points, aabb,scale=8):
     min_bound = aabb.get_min_bound()
     min_bound[0] = int(min_bound[0])
     min_bound[1] = int(min_bound[1])
@@ -49,6 +55,11 @@ def analyze_by_hough_transform(pc, aabb):
     for line in lines:
         p0, p1 = line
         cv2.line(output, p0, p1, (255, 0, 0))
+
+    for line in lines:
+        p0,p1 = line
+        output[p0[1], p0[0]] = (0, 0, 255)
+        output[p1[1], p0[0]] = (0, 0, 255)
 
     cv2.imwrite("map.png", accumulator)
 
