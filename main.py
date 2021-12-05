@@ -1,4 +1,6 @@
+import csv
 import cv2
+import math
 import networkx as nx
 import numpy as np
 import open3d as o3d
@@ -8,6 +10,7 @@ import shelve
 
 from matplotlib import pyplot as plt
 from tkinter import filedialog
+from scipy.spatial.transform import Rotation
 
 import analysis_beams
 import analysis_columns
@@ -97,6 +100,54 @@ def main():
             timer.end("PC Ground Truth Chamfer Distance")
 
         print("Ground Truth Chamfer Distance : {}".format(db["ground_truth_distance"]))
+
+    # Load ground truth Geometry
+    with shelve.open(ui.dir_output + filename) as db:
+        if "gt_geometry_path" not in db:
+            gt_geometry_filepath = filedialog.askopenfilename(initialdir=initial_dirname, title="Choose Ground Truth Geometry File")
+            db["gt_geometry_path"] = gt_geometry_filepath
+        lines = []
+        with open(db["gt_geometry_path"]) as f:
+            for line in f:
+                parts = line.split(",")
+                x = float(parts[1]) * 1000
+                y = float(parts[2]) * 1000
+                z = float(parts[3]) * 1000
+                dx = float(parts[4]) * 1000
+                dy = float(parts[5]) * 1000
+                dz = float(parts[6]) * 1000
+                rot = float(int(math.degrees(float(parts[7]))))
+                if rot < 0:
+                    rot += 360
+
+                print(rot)
+
+                #rotation = Rotation.from_rotvec((0, 0, rot)).as_matrix()
+
+                if parts[0] == "column":
+                    min_bound = (x - (dx / 2), y - (dy / 2), z - (dz / 2))
+                    max_bound = (x + (dx / 2), y + (dy / 2), z + (dz / 2))
+                else:
+                    if rot >= 180:
+                        dx = -dx
+                        dy = -dy
+                    if rot % 180 == 90:
+                        min_bound = np.asarray((x - (dy / 2), y, z - dz))
+                        max_bound = np.asarray((x + (dy / 2), y + dx, z))
+
+                    else:
+                        min_bound = np.asarray((x, y - (dy / 2), z - dz))
+                        max_bound = np.asarray((x + dx, y + (dy / 2), z))
+
+
+                    # min_bound = np.asarray((x, y - (dy / 2), z-dz))
+                    # max_bound = np.asarray((x + dx, y + (dy / 2), z))
+
+                    #min_bound = np.matmul(rotation,min_bound)
+                    #max_bound = np.matmul(rotation,max_bound)
+                bb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+                bb.color = (1, 0.5, 0) if parts[0] == "column" else (0, 0, 1)
+                ui.vis.add_geometry(bb)
 
     # Calculate aabb for main cloud
     aabb_main = pc_main.get_axis_aligned_bounding_box()

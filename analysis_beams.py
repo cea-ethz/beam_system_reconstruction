@@ -88,7 +88,7 @@ def _analyze_z_level(pc, aabb, peak):
     alpha_points = util_cloud.flatten_to_axis(slice_points, 2)
 
     if settings.read("visibility.beam_levels"):
-        aabb.color = (0, 255, 0)
+        aabb.color = (0, 1, 0)
         ui.vis.add_geometry(aabb)
 
     beam_layers = []
