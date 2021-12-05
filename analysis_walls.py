@@ -16,7 +16,7 @@ bin_width = 50
 
 def analyze_walls(pc, aabb):
     points = np.asarray(pc.points)
-
+    print("Detecting Walls : ")
     bin_count_x = math.ceil(aabb.get_extent()[0] / bin_width)
     hist_x, bin_edges = np.histogram(points[:, 0], bin_count_x)
     hist_x, hist_x_smooth = util_histogram.process_histogram(hist_x)
@@ -33,7 +33,6 @@ def analyze_walls(pc, aabb):
     util_histogram.render_bar(ui.axs[0, 2], hist_y, hist_y_smooth, peaks_y)
 
     #axs[1,0].axis(xmin=-10000,xmax=10000,ymin=-1000,ymax=7000)
-
 
     for peak_x in peaks_x:
         pc = handle_peak(pc, aabb, peak_x - 1, hist_x_smooth, bin_count_x, 0)
@@ -61,7 +60,7 @@ def handle_peak(pc, aabb, peak, hist, bin_count, axis):
 
     interior_points = util_cloud.flatten_to_axis(interior_points, axis)
 
-    if util_alpha_shape.analyze_alpha_shape_density2(interior_points, 0.75, "{}.png".format(peak)):
+    if util_alpha_shape.analyze_alpha_shape_density2(interior_points, settings.read("tuning.wall_fill_cutoff"), "{}.png".format(peak)):
         interior.paint_uniform_color((1, 0, 1))
         if settings.read("visibility.walls_extracted"):
             ui.vis.add_geometry(interior)

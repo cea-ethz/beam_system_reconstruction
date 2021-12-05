@@ -99,7 +99,6 @@ def analyze_alpha_shape_density2(points, density=0.75, name="alpha"):
 
     #white_count = len(points) * 1600
     density_factor = white_count / alpha_hull.area
-    print(density_factor)
 
     img = cv2.flip(img, 0)
     img2 = cv2.flip(img2, 0)
@@ -108,7 +107,7 @@ def analyze_alpha_shape_density2(points, density=0.75, name="alpha"):
 
     cv2.imwrite(ui.dir_output + "alpha_shapes/" + name, img)
 
-    return density_factor > density
+    return density_factor > density,density_factor
 
 
 
