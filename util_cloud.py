@@ -73,14 +73,18 @@ def flatten_cloud(pc):
 
 
 def flatten_to_axis(point_array, axis):
+    assert 0 <= axis <= 2
     ip_new = np.zeros((len(point_array), 2))
 
     if axis == 0:
         ip_new[:, 0] = point_array[:, 1]
         ip_new[:, 1] = point_array[:, 2]
-    else:
+    elif axis == 1:
         ip_new[:, 0] = point_array[:, 0]
         ip_new[:, 1] = point_array[:, 2]
+    elif axis == 2:
+        ip_new[:, 0] = point_array[:, 0]
+        ip_new[:, 1] = point_array[:, 1]
 
     return ip_new
 

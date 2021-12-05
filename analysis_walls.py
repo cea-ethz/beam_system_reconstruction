@@ -60,7 +60,7 @@ def handle_peak(pc, aabb, peak, hist, bin_count, axis):
 
     interior_points = util_cloud.flatten_to_axis(interior_points, axis)
 
-    if util_alpha_shape.analyze_alpha_shape_density2(interior_points, settings.read("tuning.wall_fill_cutoff"), "{}.png".format(peak)):
+    if util_alpha_shape.analyze_alpha_shape_density2(interior_points, settings.read("tuning.wall_fill_cutoff"), "wall_{}_{}.png".format(axis,peak)):
         interior.paint_uniform_color((1, 0, 1))
         if settings.read("visibility.walls_extracted"):
             ui.vis.add_geometry(interior)

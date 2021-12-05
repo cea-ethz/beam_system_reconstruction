@@ -7,6 +7,7 @@ import analysis_hough
 import settings
 import timer
 import ui
+import util_alpha_shape
 import util_cloud
 import util_histogram
 
@@ -43,13 +44,14 @@ def detect_beams(pc, aabb):
 
     for i, peak in enumerate(peaks):
         # Get extents of peak
-        peak_slice_position, peak_slice_width = util_histogram.get_peak_slice_params(hist_z_smooth, peak, 0.2)
+        # TODO: the falloff here needs to be calculated from cloud (e.g. needs to be 0.1 for pg, and 0.2 for gt
+        peak_slice_position, peak_slice_width = util_histogram.get_peak_slice_params(hist_z_smooth, peak, 0.1)
 
         # Get slice at Z height
         pc_slice = util_cloud.get_slice(pc, aabb, 2, peak_slice_position / bin_count_z, peak_slice_width / bin_count_z, normalized=True)
         pc_slice_aabb = pc_slice.get_axis_aligned_bounding_box()
 
-        new_levels = _analyze_z_level(pc_slice, pc_slice_aabb)
+        new_levels = _analyze_z_level(pc_slice, pc_slice_aabb, peak)
         beam_layers += new_levels
 
         # If the peak is a beam system, record the real position 1 meter below the slice to start analyzing for columns
@@ -61,7 +63,7 @@ def detect_beams(pc, aabb):
     return beam_layers, column_slice_positions, floor_levels
 
 
-def _analyze_z_level(pc, aabb):
+def _analyze_z_level(pc, aabb, peak):
     slice_points = np.asarray(pc.points)
 
     rel_height = 0.75  # Check the width near the bottom of the peak
@@ -83,15 +85,14 @@ def _analyze_z_level(pc, aabb):
     mean_y = np.mean(hist_y_smooth)
     peaks_y, _ = signal.find_peaks(hist_y_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
 
-    # Calculate variance on each axis
-    variance_x = np.var(hist_x)
-    variance_y = np.var(hist_y)
+    alpha_points = util_cloud.flatten_to_axis(slice_points, 2)
 
-    if settings.read("verbosity.floor_test"):
-        print("Peak : {}, Variance X : {}, Variance Y : {}".format("?", variance_x, variance_y))
+    if settings.read("visibility.beam_levels"):
+        aabb.color = (0, 255, 0)
+        ui.vis.add_geometry(aabb)
 
     beam_layers = []
-    if variance_x < variance_split or variance_y < variance_split:
+    if not util_alpha_shape.analyze_alpha_shape_density2(alpha_points, 0.5, "floor_{}.png".format(peak)):
         # Plot X and Y histograms
         if layer := _analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x):
             util_histogram.render_bar(ui.axs[1, 1], hist_x, hist_x_smooth, peaks_x)
