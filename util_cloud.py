@@ -135,3 +135,23 @@ def check_aabb_overlap_2d(a, b):
 
     return abs(center_a[0] - center_b[0]) < half_a[0] + half_b[0] and abs(center_a[1] - center_b[1]) < half_a[1] + \
            half_b[1]
+
+
+def chamfer_distance(a, b):
+    """
+    Returns the chamfer distance between two point clouds.
+    Assumes they've been pre-aligned/registered
+
+    :param a:
+    :param b:
+    :return:
+    """
+    dist_a = np.asarray(a.compute_point_cloud_distance(b))
+    dist_b = np.asarray(b.compute_point_cloud_distance(a))
+
+    dist_a = np.sum(dist_a) / len(a.points)
+    dist_b = np.sum(dist_b) / len(b.points)
+
+    return dist_a + dist_b
+
+

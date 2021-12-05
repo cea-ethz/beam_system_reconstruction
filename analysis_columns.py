@@ -9,7 +9,7 @@ import util_cloud
 
 from BIM_Geometry import Column
 
-
+# TODO :  Draw and export column images for debug / documentation
 def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams, z_extents):
     pc_flat = util_cloud.flatten_cloud(pc)
 

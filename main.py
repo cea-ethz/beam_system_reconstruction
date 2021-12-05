@@ -19,10 +19,6 @@ import ui
 import util_graph
 import util_cloud
 
-# === TODO ===
-# Refactor axs into global module
-# Draw and export column images for debug / documentation
-
 # === DEFINITIONS ===
 
 settings.write("do_dag_highlighting", False)
@@ -83,6 +79,24 @@ def main():
     timer.end("Read Cloud")
     print(pc_main)
     #vis.add_geometry(cloud)
+
+    # Report on ground truth cloud distance
+    # TODO : Detect changes in cloud files to automatically recalculate
+    with shelve.open(ui.dir_output + filename) as db:
+        # Calculate chamfer distance if necessary
+        if "ground_truth_distance" not in db or settings.read("analysis.force_chamfer_distance"):
+            # Ask for ground truth cloud if necessary
+            if "ground_truth_cloud_path" not in db:
+                gt_filepath = filedialog.askopenfilename(initialdir=initial_dirname, title="Choose Ground Truth Cloud")
+                db["ground_truth_cloud_path"] = gt_filepath
+
+            timer.start("PC Ground Truth Chamfer Distance")
+            pc_gt = o3d.io.read_point_cloud(db["ground_truth_cloud_path"])
+            chamfer_distance = util_cloud.chamfer_distance(pc_main, pc_gt)
+            db["ground_truth_distance"] = chamfer_distance
+            timer.end("PC Ground Truth Chamfer Distance")
+
+        print("Ground Truth Chamfer Distance : {}".format(db["ground_truth_distance"]))
 
     # Calculate aabb for main cloud
     aabb_main = pc_main.get_axis_aligned_bounding_box()
@@ -159,7 +173,6 @@ def main():
         img = cv2.transpose(img)
         #img = cv2.threshold()
         print(img.shape)
-        print(ui.dir_output + "cross_sections/" + str(beam.id) + ".png")
         cv2.imwrite(ui.dir_output + "cross_sections/" + str(beam.id) + ".png", img)
 
     timer.end("Beam Analysis")

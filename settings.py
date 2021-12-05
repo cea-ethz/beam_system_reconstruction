@@ -18,6 +18,8 @@ def load_user_settings():
     def load_setting(section, item, function_name):
         write("{}.{}".format(section, item), getattr(config[section], function_name)(item))
 
+    load_setting("analysis", "force_chamfer_distance", "getboolean")
+
     load_setting("display", "dag", "getboolean")
     load_setting("display", "histogram", "getboolean")
     load_setting("display", "hough", "getboolean")
