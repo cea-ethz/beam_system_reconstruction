@@ -5,6 +5,8 @@ import skimage.transform
 
 import settings
 import timer
+import ui
+
 
 class Segment():
     def __init__(self):
@@ -40,7 +42,7 @@ def analyze_by_hough_transform(pc, aabb):
 
     accumulator = cloud_to_accumulator(np.array(pc.points), aabb)
 
-    cv2.imwrite("accumulator.png", accumulator)
+    cv2.imwrite(ui.dir_output + "accumulator.png", accumulator)
 
     ret, accumulator = cv2.threshold(accumulator, 22, 255, cv2.THRESH_BINARY)
 
@@ -57,14 +59,14 @@ def analyze_by_hough_transform(pc, aabb):
         cv2.line(output, p0, p1, (255, 0, 0))
 
     for line in lines:
-        p0,p1 = line
+        p0, p1 = line
         output[p0[1], p0[0]] = (0, 0, 255)
         output[p1[1], p0[0]] = (0, 0, 255)
 
-    cv2.imwrite("map.png", accumulator)
+    cv2.imwrite(ui.dir_output + "accumulator_threshold.png", accumulator)
 
     output = output.astype(np.uint8)
-    cv2.imwrite("hough.png", output)
+    cv2.imwrite(ui.dir_output + "hough.png", output)
 
     if settings.read("display.hough"):
         timer.pause("Hough Analysis")

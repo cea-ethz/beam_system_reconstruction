@@ -1,10 +1,10 @@
 import alphashape
 import cv2
 import numpy as np
-
 import shapely.geometry
 
 import settings
+import ui
 
 
 def analyze_alpha_shape_density(points, density=0.75, name="alpha"):
@@ -60,7 +60,8 @@ def export_alpha_shapes(points, shape_fore, shape_back, name):
             cv2.polylines(img, _process_points(interior), color=color_fore, isClosed=True, thickness=3)
 
     img = cv2.flip(img, 0)
-    cv2.imwrite(name, img)
+
+    cv2.imwrite(ui.dir_output + "alpha_shapes/" + name, img)
 
 
 def analyze_alpha_shape_density2(points, density=0.75, name="alpha"):
@@ -105,7 +106,7 @@ def analyze_alpha_shape_density2(points, density=0.75, name="alpha"):
 
     img[np.where(img2 == 255)] = (255, 255, 0)
 
-    cv2.imwrite(name, img)
+    cv2.imwrite(ui.dir_output + "alpha_shapes/" + name, img)
 
     return density_factor > density
 

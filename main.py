@@ -25,8 +25,6 @@ import util_cloud
 
 # === DEFINITIONS ===
 
-DG = nx.DiGraph()
-
 settings.write("do_dag_highlighting", False)
 
 def set_up_vector(vis):
@@ -66,6 +64,12 @@ def main():
     if not os.path.exists(ui.dir_output):
         os.makedirs(ui.dir_output)
 
+    if not os.path.exists(ui.dir_output + "alpha_shapes/"):
+        os.makedirs(ui.dir_output + "alpha_shapes/")
+
+    if not os.path.exists(ui.dir_output + "cross_sections/"):
+        os.makedirs(ui.dir_output + "cross_sections/")
+
     project_data = shelve.open(ui.dir_output + filename)
     project_data["test"] = 2
     project_data.close()
@@ -73,6 +77,7 @@ def main():
     ui.vis = setup_vis()
 
     # Load cloud from file
+    timer.start("Total Analysis")
     timer.start("Read Cloud")
     pc_main = o3d.io.read_point_cloud(filepath)
     timer.end("Read Cloud")
@@ -143,8 +148,6 @@ def main():
             ui.vis.add_geometry(beam.aabb)
 
     # Export cross sections
-    if not os.path.exists(ui.dir_output + "cross_sections/"):
-        os.makedirs(ui.dir_output + "cross_sections/")
     for beam in beam_layer_primary.beams:
         points = np.array(beam.cloud.points)
         flat_cloud = o3d.geometry.PointCloud()
@@ -156,6 +159,7 @@ def main():
         img = cv2.transpose(img)
         #img = cv2.threshold()
         print(img.shape)
+        print(ui.dir_output + "cross_sections/" + str(beam.id) + ".png")
         cv2.imwrite(ui.dir_output + "cross_sections/" + str(beam.id) + ".png", img)
 
     timer.end("Beam Analysis")
@@ -177,40 +181,40 @@ def main():
 
     # === Construct DAG Diagram ===
     timer.start("DAG Analysis")
-    analysis_beams.analyze_beam_connections(beam_layer_primary, beam_layer_secondary, DG)
+    analysis_beams.analyze_beam_connections(beam_layer_primary, beam_layer_secondary, ui.DG)
 
     for column in columns:
         #print("Beam id : {}".format(column.child_beams[0].id))
-        DG.add_edges_from([(column.child_beams[0].id, column.id)])
-        DG.nodes[column.id]['layer'] = 0
-        DG.nodes[column.id]['source'] = 'column'
+        ui.DG.add_edges_from([(column.child_beams[0].id, column.id)])
+        ui.DG.nodes[column.id]['layer'] = 0
+        ui.DG.nodes[column.id]['source'] = 'column'
 
     # Create multipartite layout and reposition nodes for visibility
-    pos = nx.multipartite_layout(DG, 'layer')
+    pos = nx.multipartite_layout(ui.DG, 'layer')
 
-    column_ids = [column.id for column in columns if column.id in DG.nodes]
-    primary_ids = [beam.id for beam in beam_layer_primary.beams if beam.id in DG.nodes]
-    secondary_ids = [beam.id for beam in beam_layer_secondary.beams if beam.id in DG.nodes]
+    column_ids = [column.id for column in columns if column.id in ui.DG.nodes]
+    primary_ids = [beam.id for beam in beam_layer_primary.beams if beam.id in ui.DG.nodes]
+    secondary_ids = [beam.id for beam in beam_layer_secondary.beams if beam.id in ui.DG.nodes]
 
-    pos = util_graph.normalize_position(DG, pos, column_ids)
-    pos = util_graph.simplify_position(DG, pos, primary_ids)
-    pos = util_graph.normalize_position(DG, pos, primary_ids)
-    pos = util_graph.simplify_position(DG, pos, secondary_ids)
-    pos = util_graph.normalize_position(DG, pos, secondary_ids)
+    pos = util_graph.normalize_position(ui.DG, pos, column_ids)
+    pos = util_graph.simplify_position(ui.DG, pos, primary_ids)
+    pos = util_graph.normalize_position(ui.DG, pos, primary_ids)
+    pos = util_graph.simplify_position(ui.DG, pos, secondary_ids)
+    pos = util_graph.normalize_position(ui.DG, pos, secondary_ids)
 
     # Calculate downstream counts
     for column_id in column_ids:
-        upstream, downstream = util_graph.get_stream_counts(DG, column_id)
-        DG.nodes[column_id]['stream'] = upstream
+        upstream, downstream = util_graph.get_stream_counts(ui.DG, column_id)
+        ui.DG.nodes[column_id]['stream'] = upstream
     for primary_id in primary_ids:
-        upstream, downstream = util_graph.get_stream_counts(DG, primary_id)
-        DG.nodes[primary_id]['stream'] = upstream
+        upstream, downstream = util_graph.get_stream_counts(ui.DG, primary_id)
+        ui.DG.nodes[primary_id]['stream'] = upstream
     for secondary_id in secondary_ids:
-        upstream, downstream = util_graph.get_stream_counts(DG, secondary_id)
-        DG.nodes[secondary_id]['stream'] = upstream
+        upstream, downstream = util_graph.get_stream_counts(ui.DG, secondary_id)
+        ui.DG.nodes[secondary_id]['stream'] = upstream
 
     # Generate beam labels from downstream counts
-    labels = nx.get_node_attributes(DG, 'stream')
+    labels = nx.get_node_attributes(ui.DG, 'stream')
 
     if settings.read("do_dag_highlighting"):
         # Highlight model elements for example
@@ -221,16 +225,16 @@ def main():
         secondary_node_id = beam_layer_secondary.beams[7].id
         primary_node_id = beam_layer_primary.beams[1].id
 
-        node_colors = ['blue'] * len(DG.nodes)
-        node_colors[util_graph.get_node_id(DG, secondary_node_id)] = 'red'
-        node_colors[util_graph.get_node_id(DG, primary_node_id)] = 'red'
+        node_colors = ['blue'] * len(ui.DG.nodes)
+        node_colors[util_graph.get_node_id(ui.DG, secondary_node_id)] = 'red'
+        node_colors[util_graph.get_node_id(ui.DG, primary_node_id)] = 'red'
 
-        edge_colors = ['black'] * len(DG.edges)
-        edge_colors[util_graph.get_edge_id(DG, secondary_node_id, primary_node_id)] = 'red'
+        edge_colors = ['black'] * len(ui.DG.edges)
+        edge_colors[util_graph.get_edge_id(ui.DG, secondary_node_id, primary_node_id)] = 'red'
 
-        nx.draw(DG, pos, node_color=node_colors, edge_color=edge_colors, labels=labels, with_labels=True, node_size=450,font_color="white")
+        nx.draw(ui.DG, pos, node_color=node_colors, edge_color=edge_colors, labels=labels, with_labels=True, node_size=450,font_color="white")
     else:
-        nx.draw(DG, pos, labels=labels, with_labels=True, node_size=450, font_color="white")
+        nx.draw(ui.DG, pos, labels=labels, with_labels=True, node_size=450, font_color="white")
 
     plt.savefig(ui.dir_output + filename + "_graph.png")
     if settings.read("display.dag"):
@@ -241,6 +245,7 @@ def main():
         plt.clf()
 
     timer.end("DAG Analysis")
+    timer.end("Total Analysis")
 
     ui.vis.run()
     ui.vis.destroy_window()
