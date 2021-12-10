@@ -1,16 +1,13 @@
-import csv
 import cv2
 import math
 import networkx as nx
 import numpy as np
 import open3d as o3d
 import os
-import progressbar
 import shelve
 
 from matplotlib import pyplot as plt
 from tkinter import filedialog
-from scipy.spatial.transform import Rotation
 
 import analysis_beams
 import analysis_columns
@@ -104,9 +101,10 @@ def main():
     # Load ground truth Geometry
     with shelve.open(ui.dir_output + filename) as db:
         if "gt_geometry_path" not in db:
+        #if True:
             gt_geometry_filepath = filedialog.askopenfilename(initialdir=initial_dirname, title="Choose Ground Truth Geometry File")
             db["gt_geometry_path"] = gt_geometry_filepath
-        lines = []
+        csv_out = []
         with open(db["gt_geometry_path"]) as f:
             for line in f:
                 parts = line.split(",")
@@ -119,10 +117,6 @@ def main():
                 rot = float(int(math.degrees(float(parts[7]))))
                 if rot < 0:
                     rot += 360
-
-                print(rot)
-
-                #rotation = Rotation.from_rotvec((0, 0, rot)).as_matrix()
 
                 if parts[0] == "column":
                     min_bound = (x - (dx / 2), y - (dy / 2), z - (dz / 2))
@@ -139,15 +133,20 @@ def main():
                         min_bound = np.asarray((x, y - (dy / 2), z - dz))
                         max_bound = np.asarray((x + dx, y + (dy / 2), z))
 
-
-                    # min_bound = np.asarray((x, y - (dy / 2), z-dz))
-                    # max_bound = np.asarray((x + dx, y + (dy / 2), z))
-
-                    #min_bound = np.matmul(rotation,min_bound)
-                    #max_bound = np.matmul(rotation,max_bound)
                 bb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
-                bb.color = (1, 0.5, 0) if parts[0] == "column" else (0, 0, 1)
-                ui.vis.add_geometry(bb)
+                #bb.color = (1, 0.5, 0) if parts[0] == "column" else (0, 0, 1)
+                bb.color = (0,0,1)
+
+                if settings.read("visibility.ground_truth_geometry"):
+                    ui.vis.add_geometry(bb)
+
+                out_line = parts[0]
+                out_line += ",{},{},{}".format(*bb.get_min_bound())
+                out_line += ",{},{},{}".format(*bb.get_max_bound())
+                csv_out.append(out_line)
+        with open("out_gt.csv" ,'w') as file:
+            for line in csv_out:
+                file.write("{}\n".format(line))
 
     # Calculate aabb for main cloud
     aabb_main = pc_main.get_axis_aligned_bounding_box()
@@ -204,16 +203,33 @@ def main():
     beam_layer_secondary = analysis_beams.perform_beam_splits(beam_layers[primary_id], beam_layers[int(not primary_id)])
 
     # Add final beam visuals to scene
+    scan_csv = []
     if settings.read("visibility.beams_final"):
         for beam in beam_layer_primary.beams:
-            ui.vis.add_geometry(beam.cloud)
+            if beam.cloud is not None:
+                ui.vis.add_geometry(beam.cloud)
+            beam.aabb.color = (1, 0.5, 0)
             ui.vis.add_geometry(beam.aabb)
+
+            out_line = "beam"
+            out_line += ",{},{},{}".format(*beam.aabb.get_min_bound())
+            out_line += ",{},{},{}".format(*beam.aabb.get_max_bound())
+            scan_csv.append(out_line)
         for beam in beam_layer_secondary.beams:
-            ui.vis.add_geometry(beam.cloud)
+            if beam.cloud is not None:
+                ui.vis.add_geometry(beam.cloud)
+            beam.aabb.color = (1, 0.5, 0)
             ui.vis.add_geometry(beam.aabb)
+
+            out_line = "beam"
+            out_line += ",{},{},{}".format(*beam.aabb.get_min_bound())
+            out_line += ",{},{},{}".format(*beam.aabb.get_max_bound())
+            scan_csv.append(out_line)
 
     # Export cross sections
     for beam in beam_layer_primary.beams:
+        if beam.cloud is None:
+            continue
         points = np.array(beam.cloud.points)
         flat_cloud = o3d.geometry.PointCloud()
         points_2d = util_cloud.flatten_to_axis(points, int(not beam.axis))
@@ -240,7 +256,16 @@ def main():
         if settings.read("visibility.columns_final"):
             for column in columns:
                 ui.vis.add_geometry(column.pc)
+                column.aabb.color = (1,0.5,0)
                 ui.vis.add_geometry(column.aabb)
+
+                out_line = "column"
+                out_line += ",{},{},{}".format(*column.aabb.get_min_bound())
+                out_line += ",{},{},{}".format(*column.aabb.get_max_bound())
+                scan_csv.append(out_line)
+    with open("out_scan.csv", 'w') as file:
+        for line in scan_csv:
+            file.write("{}\n".format(line))
     timer.end("Column Analysis")
 
     # === Construct DAG Diagram ===
@@ -252,6 +277,14 @@ def main():
         ui.DG.add_edges_from([(column.child_beams[0].id, column.id)])
         ui.DG.nodes[column.id]['layer'] = 0
         ui.DG.nodes[column.id]['source'] = 'column'
+
+    # Manual method to drop bad nodes
+    removal = []
+    for node in ui.DG.nodes:
+        if 'layer' not in ui.DG.nodes[node]:
+            removal.append(node)
+    for r in removal:
+        ui.DG.remove_node(r)
 
     # Create multipartite layout and reposition nodes for visibility
     pos = nx.multipartite_layout(ui.DG, 'layer')

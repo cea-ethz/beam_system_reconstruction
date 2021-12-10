@@ -33,9 +33,9 @@ def normalize_histogram(hist):
     return hist
 
 
-def process_histogram(hist):
+def process_histogram(hist, extension=2):
     """Apply smoothing and normalization"""
-    hist_smooth = smooth_histogram(np.copy(hist), extension=2)
+    hist_smooth = smooth_histogram(np.copy(hist), extension=extension)
     hist_smooth = normalize_histogram(hist_smooth)
     hist = normalize_histogram(hist)
     return hist, hist_smooth
@@ -62,6 +62,9 @@ def get_peak_slice_params(hist, peak, diff=0.1):
             high = i
         else:
             break
+
+    # Manual fix based on observed issues
+    high += 1
 
     width = high - low
     position = width / 2 + low

@@ -34,11 +34,14 @@ def analyze_walls(pc, aabb):
 
     #axs[1,0].axis(xmin=-10000,xmax=10000,ymin=-1000,ymax=7000)
 
+    # Was -1 for a while, maybe necessary while the histo anlalysis is still weird
+    offset = 0
+
     for peak_x in peaks_x:
-        pc = handle_peak(pc, aabb, peak_x - 1, hist_x_smooth, bin_count_x, 0)
+        pc = handle_peak(pc, aabb, peak_x + offset, hist_x_smooth, bin_count_x, 0)
 
     for peak_y in peaks_y:
-        pc = handle_peak(pc, aabb, peak_y - 1, hist_y_smooth, bin_count_y, 1)
+        pc = handle_peak(pc, aabb, peak_y + offset, hist_y_smooth, bin_count_y, 1)
 
     return pc
 

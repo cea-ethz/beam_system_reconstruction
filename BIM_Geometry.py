@@ -98,11 +98,18 @@ class Beam(Geometry):
         aabb_a = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_a)
         aabb_b = o3d.geometry.AxisAlignedBoundingBox(min_b, max_bound)
 
-        pc_a = self.cloud.crop(aabb_a)
-        pc_b = self.cloud.crop(aabb_b)
+        if self.cloud is not None:
+            pc_a = self.cloud.crop(aabb_a)
+            pc_b = self.cloud.crop(aabb_b)
 
-        beam_a = Beam(aabb_a, self.axis, pc_a)
-        beam_b = Beam(aabb_b, self.axis, pc_b)
+            beam_a = Beam(aabb_a, self.axis, pc_a)
+            beam_b = Beam(aabb_b, self.axis, pc_b)
+
+        else:
+            beam_a = Beam(aabb_a, self.axis, None)
+            beam_b = Beam(aabb_b, self.axis, None)
+
+
 
         return beam_a, beam_b
 

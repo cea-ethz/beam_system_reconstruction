@@ -45,6 +45,9 @@ def normalize_position(dg, pos, node_ids):
     y = np.array([pos[nid][1] for nid in node_ids])
     args = np.argsort(y)
 
+    if len(node_ids) - 1 == 0:
+        return pos
+
     for i, arg_id in enumerate(args):
         n = 1.0 * i / (len(node_ids) - 1)
         pos[node_ids[arg_id]][1] = n * 2 - 1

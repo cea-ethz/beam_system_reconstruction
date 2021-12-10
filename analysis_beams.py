@@ -27,7 +27,7 @@ def detect_beams(pc, aabb):
     bin_count_z = math.ceil(aabb.get_extent()[2] / bin_width)
 
     hist_z, bin_edges = np.histogram(points[:, 2], bin_count_z)
-    hist_z, hist_z_smooth = util_histogram.process_histogram(hist_z)
+    hist_z, hist_z_smooth = util_histogram.process_histogram(hist_z, extension=2)
 
     peaks, properties = signal.find_peaks(hist_z_smooth, width=1, prominence=0.1)
 
@@ -44,8 +44,8 @@ def detect_beams(pc, aabb):
 
     for i, peak in enumerate(peaks):
         # Get extents of peak
-        # TODO: the falloff here needs to be calculated from cloud (e.g. needs to be 0.1 for pg, and 0.2 for gt
-        peak_slice_position, peak_slice_width = util_histogram.get_peak_slice_params(hist_z_smooth, peak, 0.1)
+        # TODO: the falloff here needs to be calculated from cloud (e.g. needs to be 0.1 for pg, and 0.25 for gt)
+        peak_slice_position, peak_slice_width = util_histogram.get_peak_slice_params(hist_z_smooth, peak, settings.read("tuning.beam_z_falloff"))
 
         # Get slice at Z height
         pc_slice = util_cloud.get_slice(pc, aabb, 2, peak_slice_position / bin_count_z, peak_slice_width / bin_count_z, normalized=True)
@@ -69,21 +69,32 @@ def _analyze_z_level(pc, aabb, peak):
     rel_height = 0.75  # Check the width near the bottom of the peak
     prominence = 0.13  # Experimentally tuned, this should be determined more exactly
     peak_width = 4
+    padding = 3
     # Take histogram along X axis
     bin_count_x = math.ceil(aabb.get_extent()[0] / bin_width)
     # print("Bin Count X : {}".format(bin_count_x))
     hist_x, _ = np.histogram(slice_points[:, 0], bin_count_x)
+    hist_x = np.pad(hist_x, (padding, padding), 'constant', constant_values=(0, 0))
     hist_x, hist_x_smooth = util_histogram.process_histogram(hist_x)
     mean_x = np.mean(hist_x_smooth)
     peaks_x, _ = signal.find_peaks(hist_x_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
+    # Undo padding
+    peaks_x -= padding
+    hist_x = hist_x[padding:-padding]
+    hist_x_smooth = hist_x_smooth[padding:-padding]
 
     # Take histogram along Y Axis
     bin_count_y = math.ceil(aabb.get_extent()[1] / bin_width)
     # print("Bin Count Y : {}".format(bin_count_y))
     hist_y, _ = np.histogram(slice_points[:, 1], bin_count_y)
+    hist_y = np.pad(hist_y, (padding, padding), 'constant', constant_values=(0, 0))
     hist_y, hist_y_smooth = util_histogram.process_histogram(hist_y)
     mean_y = np.mean(hist_y_smooth)
     peaks_y, _ = signal.find_peaks(hist_y_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
+    # Undo padding
+    peaks_y -= padding
+    hist_y = hist_y[padding:-padding]
+    hist_y_smooth = hist_y_smooth[padding:-padding]
 
     alpha_points = util_cloud.flatten_to_axis(slice_points, 2)
 
@@ -103,10 +114,10 @@ def _analyze_z_level(pc, aabb, peak):
 
     if len(beam_layers):
         timer.pause("Beam Analysis")
-        analysis_hough.analyze_by_hough_transform(pc, aabb)
+        beam_layers_hough = analysis_hough.analyze_by_hough_transform(pc, aabb)
         timer.unpause("Beam Analysis")
 
-    return beam_layers
+    return beam_layers_hough
 
 
 def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
@@ -117,8 +128,11 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
     layer = BeamSystemLayer()
 
     for peak in peaks:
-        slice_position, slice_width = util_histogram.get_peak_slice_params(hist, peak, 0.15) # This drop either cuts off too much of an end value or allows the other beams to get oo large
-
+        # 0.15 compromise
+        slice_position, slice_width = util_histogram.get_peak_slice_params(hist, peak, 0.1) # This drop either cuts off too much of an end value or allows the other beams to get oo large
+        # Drop false positives that are obviously overwide
+        if slice_width * bin_width > 1000:
+            continue
         beam_slice = util_cloud.get_slice(pc, aabb, axis, slice_position / source_bin_count, slice_width / source_bin_count, normalized=True)
         beam_slice_points = np.array(beam_slice.points)
         beam_aabb = beam_slice.get_axis_aligned_bounding_box()
