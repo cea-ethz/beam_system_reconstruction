@@ -103,7 +103,7 @@ def analyze_by_hough_transform(pc, aabb):
 
     layer_h = BeamSystemLayer()
     for cluster in clusters_h:
-        min_bound,max_bound = get_cluster_extents(cluster)
+        min_bound, max_bound = get_cluster_extents(cluster)
         min_bound *= scale
         max_bound *= scale
         min_bound[0] += aabb.get_min_bound()[1]
@@ -117,7 +117,7 @@ def analyze_by_hough_transform(pc, aabb):
         min_bound[2] = min_z
         max_bound[2] = max_z
         beam_aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound,max_bound)
-        beam = Beam(beam_aabb, 1, None)
+        beam = Beam(beam_aabb, 0, None)
         layer_h.add_beam(beam)
     layer_h.finalize()
 
@@ -137,7 +137,7 @@ def analyze_by_hough_transform(pc, aabb):
         min_bound[2] = min_z
         max_bound[2] = max_z
         beam_aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
-        beam = Beam(beam_aabb, 0, None)
+        beam = Beam(beam_aabb, 1, None)
         layer_v.add_beam(beam)
     layer_v.finalize()
 

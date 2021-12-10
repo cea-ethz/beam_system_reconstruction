@@ -202,6 +202,9 @@ def main():
     beam_layer_primary = beam_layers[primary_id]
     beam_layer_secondary = analysis_beams.perform_beam_splits(beam_layers[primary_id], beam_layers[int(not primary_id)])
 
+    print("Primary Beams : {}".format(len(beam_layer_primary.beams)))
+    print("Secondary Beams : {}".format(len(beam_layer_secondary.beams)))
+
     # Add final beam visuals to scene
     scan_csv = []
     if settings.read("visibility.beams_final"):
