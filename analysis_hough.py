@@ -91,54 +91,22 @@ def analyze_by_hough_transform(pc, aabb):
     render_lines(output_joined, lines_v, line_color=(0, 255, 0))
     render_lines(output_joined, lines_other, line_color=(255, 0, 255))
 
-    min_z = aabb.get_min_bound()[2]
-    max_z = aabb.get_max_bound()[2]
+
 
     # Detect beam positions
     clusters_h = cluster_lines(lines_h, 0)
     clusters_v = cluster_lines(lines_v, 1)
 
-    print(len(clusters_h))
-    print(len(clusters_v))
-
     layer_h = BeamSystemLayer()
     for cluster in clusters_h:
-        min_bound, max_bound = get_cluster_extents(cluster)
-        min_bound *= scale
-        max_bound *= scale
-        min_bound[0] += aabb.get_min_bound()[1]
-        min_bound[1] += aabb.get_min_bound()[0]
-        max_bound[0] += aabb.get_min_bound()[1]
-        max_bound[1] += aabb.get_min_bound()[0]
-        min_bound[0], min_bound[1] = min_bound[1], min_bound[0]
-        max_bound[0], max_bound[1] = max_bound[1], max_bound[0]
-        if min_bound[0] == max_bound[0] or min_bound[1] == max_bound[1]:
-            continue
-        min_bound[2] = min_z
-        max_bound[2] = max_z
-        beam_aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound,max_bound)
-        beam = Beam(beam_aabb, 0, None)
-        layer_h.add_beam(beam)
+        if beam := cluster_to_beam(cluster, scale, aabb, 0):
+            layer_h.add_beam(beam)
     layer_h.finalize()
 
     layer_v = BeamSystemLayer()
     for cluster in clusters_v:
-        min_bound, max_bound = get_cluster_extents(cluster)
-        min_bound *= scale
-        max_bound *= scale
-        min_bound[0] += aabb.get_min_bound()[1]
-        min_bound[1] += aabb.get_min_bound()[0]
-        max_bound[0] += aabb.get_min_bound()[1]
-        max_bound[1] += aabb.get_min_bound()[0]
-        min_bound[0], min_bound[1] = min_bound[1], min_bound[0]
-        max_bound[0], max_bound[1] = max_bound[1], max_bound[0]
-        if min_bound[0] == max_bound[0] or min_bound[1] == max_bound[1]:
-            continue
-        min_bound[2] = min_z
-        max_bound[2] = max_z
-        beam_aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
-        beam = Beam(beam_aabb, 1, None)
-        layer_v.add_beam(beam)
+        if beam := cluster_to_beam(cluster, scale, aabb, 1):
+            layer_v.add_beam(beam)
     layer_v.finalize()
 
     output_joined = output_joined.astype(np.uint8)
@@ -154,6 +122,25 @@ def analyze_by_hough_transform(pc, aabb):
     timer.end("Hough Analysis")
 
     return [layer_h, layer_v]
+
+
+def cluster_to_beam(cluster, scale, aabb, axis):
+    min_bound, max_bound = get_cluster_extents(cluster)
+    min_bound *= scale
+    max_bound *= scale
+    min_bound[0] += aabb.get_min_bound()[1]
+    min_bound[1] += aabb.get_min_bound()[0]
+    max_bound[0] += aabb.get_min_bound()[1]
+    max_bound[1] += aabb.get_min_bound()[0]
+    min_bound[0], min_bound[1] = min_bound[1], min_bound[0]
+    max_bound[0], max_bound[1] = max_bound[1], max_bound[0]
+    if min_bound[0] == max_bound[0] or min_bound[1] == max_bound[1]:
+        return None
+    min_bound[2] = aabb.get_min_bound()[2]
+    max_bound[2] = aabb.get_max_bound()[2]
+    beam_aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+    beam = Beam(beam_aabb, axis, None)
+    return beam
 
 
 def render_lines(img, lines, line_color=(255, 0, 0), end_color=(0, 0, 255)):
