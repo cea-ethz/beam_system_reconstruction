@@ -29,6 +29,8 @@ def load_user_settings():
     load_setting("tuning", "wall_fill_cutoff", "getfloat")
     load_setting("tuning", "beam_z_falloff", "getfloat")
 
+    load_setting("verbosity", "global_level", "getint")
+
     load_setting("visibility", "beams_final", "getboolean")
     load_setting("visibility", "beam_levels", "getboolean")
     load_setting("visibility", "beams_rejected", "getboolean")

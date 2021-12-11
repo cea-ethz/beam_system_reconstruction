@@ -2,6 +2,7 @@ import cv2
 import math
 import numpy as np
 import open3d as o3d
+import os
 import skimage.feature
 import skimage.transform
 
@@ -14,15 +15,23 @@ from util_cloud import cloud_to_accumulator
 
 
 def analyze_by_hough_transform(pc, aabb):
-    scale = 8
+    """
+    Analyzes a beam layer by 2d hough-transform
+
+    :param pc: Pointcloud representing the guessed beam layer
+    :param aabb: Bounding box for the point cloud
+    :return: Array of layers corresponding to beam directions
+    """
 
     timer.start("Hough Analysis")
 
+    scale = 8
+
     accumulator = cloud_to_accumulator(np.array(pc.points), scale)
-    cv2.imwrite(ui.dir_output + "accumulator.png", accumulator)
+    cv2.imwrite(ui.dir_output + "hough/accumulator_raw.png", accumulator)
 
     ret, accumulator = cv2.threshold(accumulator, 22, 255, cv2.THRESH_BINARY)
-    cv2.imwrite(ui.dir_output + "accumulator_threshold.png", accumulator)
+    cv2.imwrite(ui.dir_output + "hough/accumulator_threshold.png", accumulator)
 
     output_raw = cv2.cvtColor(accumulator, cv2.COLOR_GRAY2BGR)
     output_joined = np.copy(output_raw)
@@ -30,13 +39,14 @@ def analyze_by_hough_transform(pc, aabb):
     edges = skimage.feature.canny(accumulator, 2, 1, 25)
     lines = skimage.transform.probabilistic_hough_line(edges, threshold=10, line_length=5, line_gap=3)
 
-    print("{} lines found".format(len(lines)))
+    if settings.read("verbosity.global_level") == 2:
+        print("{} lines found".format(len(lines)))
 
     render_lines(output_raw, lines)
 
     # Output raw lines graphic
     output_raw = output_raw.astype(np.uint8)
-    cv2.imwrite(ui.dir_output + "hough.png", output_raw)
+    cv2.imwrite(ui.dir_output + "hough/lines_raw.png", output_raw)
 
     # Find final outlines
     lines_h = []
@@ -72,8 +82,6 @@ def analyze_by_hough_transform(pc, aabb):
     render_lines(output_joined, lines_v, line_color=(0, 255, 0))
     render_lines(output_joined, lines_other, line_color=(255, 0, 255))
 
-
-
     # Detect beam positions
     clusters_h = cluster_lines(lines_h, 0)
     clusters_v = cluster_lines(lines_v, 1)
@@ -91,7 +99,7 @@ def analyze_by_hough_transform(pc, aabb):
     layer_v.finalize()
 
     output_joined = output_joined.astype(np.uint8)
-    cv2.imwrite(ui.dir_output + "hough_joined.png", output_joined)
+    cv2.imwrite(ui.dir_output + "hough/lines_joined.png", output_joined)
 
     if settings.read("display.hough"):
         timer.pause("Hough Analysis")
