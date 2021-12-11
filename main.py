@@ -19,6 +19,13 @@ import ui
 import util_graph
 import util_cloud
 
+# testing methods
+# - Percentage of found elements / missed count?
+# - AVerage CS Offset
+# - Average length diff
+# - Average CS diff (one/two D?) (Manhattan?)
+# - Graph diff (average missed connections? Total missed connections?)
+
 # === DEFINITIONS ===
 
 settings.write("do_dag_highlighting", False)

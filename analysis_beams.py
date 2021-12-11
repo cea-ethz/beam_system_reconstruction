@@ -116,8 +116,9 @@ def _analyze_z_level(pc, aabb, peak):
         timer.pause("Beam Analysis")
         beam_layers_hough = analysis_hough.analyze_by_hough_transform(pc, aabb)
         timer.unpause("Beam Analysis")
+        return beam_layers_hough
 
-    return beam_layers_hough
+    return beam_layers
 
 
 def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
