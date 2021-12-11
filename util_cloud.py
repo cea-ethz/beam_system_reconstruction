@@ -159,3 +159,32 @@ def chamfer_distance(a, b):
     return dist_a + dist_b
 
 
+def cloud_to_accumulator(points, scale=8):
+    """
+    Turns an internal point array from a point cloud into an accumulator image. Assumes points are already XY plane oriented
+
+    :param points: Numpy array of points
+    :param scale: Cloud downscaling - i.e. number of millimeters per pixel
+    :return: Grayscale image of range 0-255
+    """
+
+    min_x = int(np.min(points[:, 0]))
+    min_y = int(np.min(points[:, 1]))
+    max_x = int(np.max(points[:, 0]))
+    max_y = int(np.max(points[:, 1]))
+    range_x = max_x - min_x
+    range_y = max_y - min_y
+
+    accumulator = np.zeros((range_x // scale, range_y // scale))
+
+    for point in points:
+        x = int((point[0] - min_x) // scale)
+        y = int((point[1] - min_y) // scale)
+
+        accumulator[x-5:x+5, y-5:y+5] += 1
+
+    accumulator /= np.max(accumulator)
+    accumulator = np.float32(accumulator)
+    accumulator *= 255
+
+    return accumulator

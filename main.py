@@ -239,7 +239,7 @@ def main():
         points_3d = np.zeros((points_2d.shape[0], 3))
         points_3d[:, 0:2] = points_2d
         flat_cloud.points = o3d.utility.Vector3dVector(points_3d)
-        img = analysis_hough.cloud_to_accumulator(np.array(flat_cloud.points), flat_cloud.get_axis_aligned_bounding_box(), scale=2)
+        img = util_cloud.cloud_to_accumulator(np.array(flat_cloud.points), scale=2)
         img = cv2.transpose(img)
         #img = cv2.threshold()
         print(img.shape)

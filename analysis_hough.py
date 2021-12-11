@@ -10,26 +10,7 @@ import timer
 import ui
 
 from BIM_Geometry import Beam, BeamSystemLayer
-
-
-def cloud_to_accumulator(points, aabb, scale=8):
-    min_bound = aabb.get_min_bound()
-    min_bound[0] = int(min_bound[0])
-    min_bound[1] = int(min_bound[1])
-
-    accumulator = np.zeros((int(aabb.get_extent()[0]) // scale, int(aabb.get_extent()[1]) // scale))
-
-    for point in points:
-        x = int((point[0] - min_bound[0]) // scale)
-        y = int((point[1] - min_bound[1]) // scale)
-
-        accumulator[x-5:x+5, y-5:y+5] += 1
-
-    accumulator /= np.max(accumulator)
-    accumulator = np.float32(accumulator)
-    accumulator *= 255
-
-    return accumulator
+from util_cloud import cloud_to_accumulator
 
 
 def analyze_by_hough_transform(pc, aabb):
@@ -37,7 +18,7 @@ def analyze_by_hough_transform(pc, aabb):
 
     timer.start("Hough Analysis")
 
-    accumulator = cloud_to_accumulator(np.array(pc.points), aabb, scale)
+    accumulator = cloud_to_accumulator(np.array(pc.points), scale)
     cv2.imwrite(ui.dir_output + "accumulator.png", accumulator)
 
     ret, accumulator = cv2.threshold(accumulator, 22, 255, cv2.THRESH_BINARY)
