@@ -55,6 +55,7 @@ def main():
     with shelve.open("settings") as db:
         if 'initial_dirname' in db:
             initial_dirname = db['initial_dirname']
+    ui.initial_dirname = initial_dirname
 
     filepath = filedialog.askopenfilename(initialdir=initial_dirname, title="Choose Input Cloud")
     dirname = os.path.dirname(filepath) + "/"
@@ -107,60 +108,7 @@ def main():
 
         print("Ground Truth Chamfer Distance : {}".format(db["ground_truth_distance"]))
 
-    # Load ground truth Geometry
-    with shelve.open(ui.dir_output + filename) as db:
-        if "gt_geometry_path" not in db:
-        #if True:
-            gt_geometry_filepath = filedialog.askopenfilename(initialdir=initial_dirname, title="Choose Ground Truth Geometry File")
-            db["gt_geometry_path"] = gt_geometry_filepath
-        csv_gt = []
-        with open(db["gt_geometry_path"]) as f:
-            for line in f:
-                parts = line.split(",")
-                x = float(parts[2]) * 1000
-                y = float(parts[3]) * 1000
-                z = float(parts[4]) * 1000
-                dx = float(parts[5]) * 1000
-                dy = float(parts[6]) * 1000
-                dz = float(parts[7]) * 1000
-                rot = float(int(math.degrees(float(parts[8]))))
-                if rot < 0:
-                    rot += 360
-
-                if parts[0] == "column":
-                    min_bound = (x - (dx / 2), y - (dy / 2), z - (dz / 2))
-                    max_bound = (x + (dx / 2), y + (dy / 2), z + (dz / 2))
-                else:
-                    if rot >= 180:
-                        dx = -dx
-                        dy = -dy
-                    if rot % 180 == 90:
-                        min_bound = np.asarray((x - (dy / 2), y, z - dz))
-                        max_bound = np.asarray((x + (dy / 2), y + dx, z))
-
-                    else:
-                        min_bound = np.asarray((x, y - (dy / 2), z - dz))
-                        max_bound = np.asarray((x + dx, y + (dy / 2), z))
-
-                bb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
-                #bb.color = (1, 0.5, 0) if parts[0] == "column" else (0, 0, 1)
-                bb.color = (0, 0, 1)
-
-                if settings.read("visibility.ground_truth_geometry"):
-                    ui.vis.add_geometry(bb)
-
-                out_line = parts[0]
-                out_line += ",{}".format(parts[1])
-                #out_line += ",{},{},{}".format(*bb.get_min_bound())
-                #out_line += ",{},{},{}".format(*bb.get_max_bound())
-                out_line += ",{},{},{}".format(*bb.get_center())
-                out_line += ",{},{},{}".format(*[abs(n) for n in bb.get_extent()])
-                csv_gt.append(out_line)
-        with open(ui.dir_output + "geometry_gt.csv",'w') as file:
-            for line in csv_gt:
-                file.write("{}\n".format(line))
-
-        db["csv_gt"] = csv_gt
+    load_ground_truth_geometry()
 
     # Calculate aabb for main cloud
     aabb_main = pc_main.get_axis_aligned_bounding_box()
@@ -374,6 +322,63 @@ def main():
 
     timer.check_for_orphans()
 
+
+def load_ground_truth_geometry():
+    # Load ground truth Geometry
+    with shelve.open(ui.dir_output + ui.filename) as db:
+        if "gt_geometry_path" not in db:
+            # if True:
+            gt_geometry_filepath = filedialog.askopenfilename(initialdir=ui.initial_dirname,
+                                                              title="Choose Ground Truth Geometry File")
+            db["gt_geometry_path"] = gt_geometry_filepath
+        csv_gt = []
+        with open(db["gt_geometry_path"]) as f:
+            for line in f:
+                parts = line.split(",")
+                x = float(parts[2]) * 1000
+                y = float(parts[3]) * 1000
+                z = float(parts[4]) * 1000
+                dx = float(parts[5]) * 1000
+                dy = float(parts[6]) * 1000
+                dz = float(parts[7]) * 1000
+                rot = float(int(math.degrees(float(parts[8]))))
+                if rot < 0:
+                    rot += 360
+
+                if parts[0] == "column":
+                    min_bound = (x - (dx / 2), y - (dy / 2), z - (dz / 2))
+                    max_bound = (x + (dx / 2), y + (dy / 2), z + (dz / 2))
+                else:
+                    if rot >= 180:
+                        dx = -dx
+                        dy = -dy
+                    if rot % 180 == 90:
+                        min_bound = np.asarray((x - (dy / 2), y, z - dz))
+                        max_bound = np.asarray((x + (dy / 2), y + dx, z))
+
+                    else:
+                        min_bound = np.asarray((x, y - (dy / 2), z - dz))
+                        max_bound = np.asarray((x + dx, y + (dy / 2), z))
+
+                bb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+                # bb.color = (1, 0.5, 0) if parts[0] == "column" else (0, 0, 1)
+                bb.color = (0, 0, 1)
+
+                if settings.read("visibility.ground_truth_geometry"):
+                    ui.vis.add_geometry(bb)
+
+                out_line = parts[0]
+                out_line += ",{}".format(parts[1])
+                # out_line += ",{},{},{}".format(*bb.get_min_bound())
+                # out_line += ",{},{},{}".format(*bb.get_max_bound())
+                out_line += ",{},{},{}".format(*bb.get_center())
+                out_line += ",{},{},{}".format(*[abs(n) for n in bb.get_extent()])
+                csv_gt.append(out_line)
+        with open(ui.dir_output + "geometry_gt.csv", 'w') as file:
+            for line in csv_gt:
+                file.write("{}\n".format(line))
+
+        db["csv_gt"] = csv_gt
 
 def run_quality_checks():
     # === Check analysis quality ===
