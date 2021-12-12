@@ -34,6 +34,7 @@ def load_user_settings():
     load_setting("visibility", "beams_final", "getboolean")
     load_setting("visibility", "beam_levels", "getboolean")
     load_setting("visibility", "beams_rejected", "getboolean")
+    load_setting("visibility", "cloud_raw", "getboolean")
     load_setting("visibility", "column_clusters", "getboolean")
     load_setting("visibility", "columns_final", "getboolean")
     load_setting("visibility", "ground_truth_geometry", "getboolean")

@@ -21,7 +21,7 @@ import util_cloud
 
 # testing methods
 # X Percentage of found elements / missed count?
-# X AVerage CS Offset
+# X Average CS Offset
 # X Average length diff
 # - Average CS diff (one/two D?) (Manhattan?)
 # - Graph diff (average missed connections? Total missed connections?)
@@ -42,7 +42,8 @@ def main():
     pc_main = o3d.io.read_point_cloud(ui.input_cloud_filepath)
     timer.end("Read Cloud")
     print(pc_main)
-    #vis.add_geometry(cloud)
+    if settings.read("visibility.cloud_raw"):
+        ui.vis.add_geometry(pc_main)
 
     # Report on ground truth cloud distance
     # TODO : Detect changes in cloud files to automatically recalculate
@@ -159,48 +160,47 @@ def main():
         flat_cloud.points = o3d.utility.Vector3dVector(points_3d)
         img = util_cloud.cloud_to_accumulator(np.array(flat_cloud.points), scale=2)
         img = cv2.transpose(img)
-        #img = cv2.threshold()
-        #print(img.shape)
         cv2.imwrite(ui.dir_output + "cross_sections/" + str(beam.id) + ".png", img)
 
     timer.end("Beam Analysis")
 
     # === Perform main column analysis ===
     timer.start("Column Analysis")
+    columns = []
     for column_slice_position in column_slice_positions:
         pc_column = util_cloud.get_slice(pc_main, aabb_main, 2, column_slice_position, 1000, normalized=False)
         aabb_column = pc_column.get_axis_aligned_bounding_box()
         z_min = floor_levels[0] + 50 if len(floor_levels) else aabb_main.get_min_bound()[2]
         z_extents = (z_min, beam_layer_primary.average_z)
-        columns = analysis_columns.analyze_columns(pc_column, aabb_column, pc_main, aabb_main, beam_layer_primary.beams, z_extents)
+        columns += analysis_columns.analyze_columns(pc_column, aabb_column, pc_main, aabb_main, beam_layer_primary.beams, z_extents)
 
-        if settings.read("visibility.columns_final"):
-            for column in columns:
-                ui.vis.add_geometry(column.pc)
-                column.aabb.color = (1,0.5,0)
-                ui.vis.add_geometry(column.aabb)
+    if settings.read("visibility.columns_final"):
+        for column in columns:
+            ui.vis.add_geometry(column.pc)
+            column.aabb.color = (1, 0.5, 0)
+            ui.vis.add_geometry(column.aabb)
 
-                out_line = "column"
-                out_line += ",{}".format(2)
-                out_line += ",{},{},{}".format(*column.aabb.get_center())
-                out_line += ",{},{},{}".format(*column.aabb.get_extent())
-                csv_scan.append(out_line)
+            out_line = "column"
+            out_line += ",{}".format(2)
+            out_line += ",{},{},{}".format(*column.aabb.get_center())
+            out_line += ",{},{},{}".format(*column.aabb.get_extent())
+            csv_scan.append(out_line)
+
+            ui.DG.add_edges_from([(column.child_beams[0].id, column.id)])
+            ui.DG.nodes[column.id]['layer'] = 0
+            ui.DG.nodes[column.id]['source'] = 'column'
+
     with open(ui.dir_output + "geometry_scan.csv", 'w') as file:
         for line in csv_scan:
             file.write("{}\n".format(line))
     with shelve.open(ui.dir_output + ui.filename) as db:
         db["csv_scan"] = csv_scan
+
     timer.end("Column Analysis")
 
     # === Construct DAG Diagram ===
     timer.start("DAG Analysis")
     analysis_beams.analyze_beam_connections(beam_layer_primary, beam_layer_secondary, ui.DG)
-
-    for column in columns:
-        #print("Beam id : {}".format(column.child_beams[0].id))
-        ui.DG.add_edges_from([(column.child_beams[0].id, column.id)])
-        ui.DG.nodes[column.id]['layer'] = 0
-        ui.DG.nodes[column.id]['source'] = 'column'
 
     # Manual method to drop bad nodes
     removal = []
@@ -253,7 +253,7 @@ def main():
         edge_colors = ['black'] * len(ui.DG.edges)
         edge_colors[util_graph.get_edge_id(ui.DG, secondary_node_id, primary_node_id)] = 'red'
 
-        nx.draw(ui.DG, pos, node_color=node_colors, edge_color=edge_colors, labels=labels, with_labels=True, node_size=450,font_color="white")
+        nx.draw(ui.DG, pos, node_color=node_colors, edge_color=edge_colors, labels=labels, with_labels=True, node_size=450, font_color="white")
     else:
         nx.draw(ui.DG, pos, labels=labels, with_labels=True, node_size=450, font_color="white")
 
@@ -313,9 +313,9 @@ def setup_vis():
 
     return vis
 
+
 def set_up_vector(vis):
     vis.get_view_control().set_up((0.001, 0.000, 0.9999))
-    #vis.get_view_control().set_up((-1, 0.000, 0.0))
 
 
 def load_ground_truth_geometry():
@@ -375,8 +375,8 @@ def load_ground_truth_geometry():
 
         db["csv_gt"] = csv_gt
 
+
 def run_quality_checks():
-    # === Check analysis quality ===
     timer.start("Quality Check")
     with shelve.open(ui.dir_output + ui.filename) as db:
         column_diff, beam_diff = analysis_quality.check_element_counts(db["csv_gt"], db["csv_scan"])
