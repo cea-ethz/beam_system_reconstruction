@@ -21,8 +21,8 @@ import util_cloud
 
 # testing methods
 # X Percentage of found elements / missed count?
-# - AVerage CS Offset
-# - Average length diff
+# X AVerage CS Offset
+# X Average length diff
 # - Average CS diff (one/two D?) (Manhattan?)
 # - Graph diff (average missed connections? Total missed connections?)
 
@@ -150,8 +150,10 @@ def main():
 
                 out_line = parts[0]
                 out_line += ",{}".format(parts[1])
-                out_line += ",{},{},{}".format(*bb.get_min_bound())
-                out_line += ",{},{},{}".format(*bb.get_max_bound())
+                #out_line += ",{},{},{}".format(*bb.get_min_bound())
+                #out_line += ",{},{},{}".format(*bb.get_max_bound())
+                out_line += ",{},{},{}".format(*bb.get_center())
+                out_line += ",{},{},{}".format(*bb.get_extent())
                 csv_gt.append(out_line)
         with open(ui.dir_output + "geometry_gt.csv",'w') as file:
             for line in csv_gt:
@@ -227,8 +229,8 @@ def main():
 
             out_line = "beam"
             out_line += ",{}".format(beam.axis)
-            out_line += ",{},{},{}".format(*beam.aabb.get_min_bound())
-            out_line += ",{},{},{}".format(*beam.aabb.get_max_bound())
+            out_line += ",{},{},{}".format(*beam.aabb.get_center())
+            out_line += ",{},{},{}".format(*beam.aabb.get_extent())
             csv_scan.append(out_line)
         for beam in beam_layer_secondary.beams:
             if beam.cloud is not None:
@@ -238,8 +240,8 @@ def main():
 
             out_line = "beam"
             out_line += ",{}".format(beam.axis)
-            out_line += ",{},{},{}".format(*beam.aabb.get_min_bound())
-            out_line += ",{},{},{}".format(*beam.aabb.get_max_bound())
+            out_line += ",{},{},{}".format(*beam.aabb.get_center())
+            out_line += ",{},{},{}".format(*beam.aabb.get_extent())
             csv_scan.append(out_line)
 
     # Export cross sections
@@ -277,8 +279,8 @@ def main():
 
                 out_line = "column"
                 out_line += ",{}".format(2)
-                out_line += ",{},{},{}".format(*column.aabb.get_min_bound())
-                out_line += ",{},{},{}".format(*column.aabb.get_max_bound())
+                out_line += ",{},{},{}".format(*column.aabb.get_center())
+                out_line += ",{},{},{}".format(*column.aabb.get_extent())
                 csv_scan.append(out_line)
     with open(ui.dir_output + "geometry_scan.csv", 'w') as file:
         for line in csv_scan:
@@ -365,11 +367,18 @@ def main():
     # === Check analysis quality ===
     timer.start("Quality Check")
     with shelve.open(ui.dir_output + filename) as db:
+
         column_diff, beam_diff = analysis_quality.check_element_counts(db["csv_gt"], db["csv_scan"])
-        column_cs_diff = analysis_quality.check_cross_section_offset(db["csv_gt"], db["csv_scan"])
+        column_cs_offset_average, column_cs_size_average, column_length_average = analysis_quality.check_column_quality(db["csv_gt"], db["csv_scan"])
+        beam_cs_offset_average, beam_length_average = analysis_quality.check_beam_quality(db["csv_gt"], db["csv_scan"])
+        #column_cs_diff, beam_cs_diff = analysis_quality.check_cross_section_offset(db["csv_gt"], db["csv_scan"])
 
         print("Element Count Diff : {} columns, {} beams".format(column_diff, beam_diff))
-        print("Average Cross Section Offset : {}".format(column_cs_diff))
+        print("Average Column Cross Section Offset : {}".format(column_cs_offset_average))
+        print("Average Column Cross Section Size : {}".format(column_cs_size_average))
+        print("Average Column Length Difference : {}".format(column_length_average))
+        print("Average Beam Cross Section Offset : {}".format(beam_cs_offset_average))
+        print("Average Beam Length Difference : {}".format(beam_length_average))
 
     timer.end("Quality Check")
 
