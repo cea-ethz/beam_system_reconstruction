@@ -26,78 +26,32 @@ import util_cloud
 # - Average CS diff (one/two D?) (Manhattan?)
 # - Graph diff (average missed connections? Total missed connections?)
 
-# === DEFINITIONS ===
-
 settings.write("do_dag_highlighting", False)
 
 
-def set_up_vector(vis):
-    vis.get_view_control().set_up((0.001, 0.000, 0.9999))
-    #vis.get_view_control().set_up((-1, 0.000, 0.0))
-
-
-def setup_vis():
-    vis = o3d.visualization.VisualizerWithKeyCallback()
-    #vis.register_key_callback(83, save_view)
-    vis.register_key_callback(69, set_up_vector)
-    vis.create_window()
-    vis.get_render_option().point_size = 1
-
-    return vis
-
-
 def main():
-
     settings.load_user_settings()
 
-    # Load last cloud location from settings if applicable
-    initial_dirname = os.getcwd()
-    with shelve.open("settings") as db:
-        if 'initial_dirname' in db:
-            initial_dirname = db['initial_dirname']
-    ui.initial_dirname = initial_dirname
-
-    filepath = filedialog.askopenfilename(initialdir=initial_dirname, title="Choose Input Cloud")
-    dirname = os.path.dirname(filepath) + "/"
-    basename = os.path.basename(filepath)
-    filename = os.path.splitext(basename)[0]
-    ui.filename = filename
-    ui.dir_output = dirname + filename + "/"
-
-    with shelve.open("settings") as db:
-        db['initial_dirname'] = dirname
-
-    if not os.path.exists(ui.dir_output):
-        os.makedirs(ui.dir_output)
-
-    if not os.path.exists(ui.dir_output + "alpha_shapes/"):
-        os.makedirs(ui.dir_output + "alpha_shapes/")
-
-    if not os.path.exists(ui.dir_output + "cross_sections/"):
-        os.makedirs(ui.dir_output + "cross_sections/")
-
-    project_data = shelve.open(ui.dir_output + filename)
-    project_data["test"] = 2
-    project_data.close()
+    query_filepaths()
 
     ui.vis = setup_vis()
 
     # Load cloud from file
     timer.start("Total Analysis")
     timer.start("Read Cloud")
-    pc_main = o3d.io.read_point_cloud(filepath)
+    pc_main = o3d.io.read_point_cloud(ui.input_cloud_filepath)
     timer.end("Read Cloud")
     print(pc_main)
     #vis.add_geometry(cloud)
 
     # Report on ground truth cloud distance
     # TODO : Detect changes in cloud files to automatically recalculate
-    with shelve.open(ui.dir_output + filename) as db:
+    with shelve.open(ui.dir_output + ui.filename) as db:
         # Calculate chamfer distance if necessary
         if "ground_truth_distance" not in db or settings.read("analysis.force_chamfer_distance"):
             # Ask for ground truth cloud if necessary
             if "ground_truth_cloud_path" not in db:
-                gt_filepath = filedialog.askopenfilename(initialdir=initial_dirname, title="Choose Ground Truth Cloud")
+                gt_filepath = filedialog.askopenfilename(initialdir=ui.initial_dirname, title="Choose Ground Truth Cloud")
                 db["ground_truth_cloud_path"] = gt_filepath
 
             timer.start("PC Ground Truth Chamfer Distance")
@@ -146,7 +100,7 @@ def main():
     beam_layers, column_slice_positions, floor_levels = analysis_beams.detect_beams(pc_main, aabb_main)
 
     # Finalize the histogram plots
-    plt.savefig(ui.dir_output + filename + "_plot.png")
+    plt.savefig(ui.dir_output + ui.filename + "_plot.png")
     if settings.read("display.histogram"):
         timer.pause("Beam Analysis")
         plt.show()
@@ -234,7 +188,7 @@ def main():
     with open(ui.dir_output + "geometry_scan.csv", 'w') as file:
         for line in csv_scan:
             file.write("{}\n".format(line))
-    with shelve.open(ui.dir_output + filename) as db:
+    with shelve.open(ui.dir_output + ui.filename) as db:
         db["csv_scan"] = csv_scan
     timer.end("Column Analysis")
 
@@ -303,7 +257,7 @@ def main():
     else:
         nx.draw(ui.DG, pos, labels=labels, with_labels=True, node_size=450, font_color="white")
 
-    plt.savefig(ui.dir_output + filename + "_graph.png")
+    plt.savefig(ui.dir_output + ui.filename + "_graph.png")
     if settings.read("display.dag"):
         timer.pause("DAG Analysis")
         plt.show()
@@ -321,6 +275,47 @@ def main():
     ui.vis.destroy_window()
 
     timer.check_for_orphans()
+
+
+def query_filepaths():
+    # Load last cloud location from settings if applicable
+    ui.initial_dirname = os.getcwd()
+    with shelve.open("settings") as db:
+        if 'initial_dirname' in db:
+            ui.initial_dirname = db['initial_dirname']
+
+    ui.input_cloud_filepath = filedialog.askopenfilename(initialdir=ui.initial_dirname, title="Choose Input Cloud")
+    dirname = os.path.dirname(ui.input_cloud_filepath) + "/"
+    basename = os.path.basename(ui.input_cloud_filepath)
+    filename = os.path.splitext(basename)[0]
+    ui.filename = filename
+    ui.dir_output = dirname + filename + "/"
+
+    with shelve.open("settings") as db:
+        db['initial_dirname'] = dirname
+
+    if not os.path.exists(ui.dir_output):
+        os.makedirs(ui.dir_output)
+
+    if not os.path.exists(ui.dir_output + "alpha_shapes/"):
+        os.makedirs(ui.dir_output + "alpha_shapes/")
+
+    if not os.path.exists(ui.dir_output + "cross_sections/"):
+        os.makedirs(ui.dir_output + "cross_sections/")
+
+
+def setup_vis():
+    vis = o3d.visualization.VisualizerWithKeyCallback()
+    #vis.register_key_callback(83, save_view)
+    vis.register_key_callback(69, set_up_vector)
+    vis.create_window()
+    vis.get_render_option().point_size = 1
+
+    return vis
+
+def set_up_vector(vis):
+    vis.get_view_control().set_up((0.001, 0.000, 0.9999))
+    #vis.get_view_control().set_up((-1, 0.000, 0.0))
 
 
 def load_ground_truth_geometry():
