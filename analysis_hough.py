@@ -14,7 +14,7 @@ from BIM_Geometry import Beam, BeamSystemLayer
 from util_cloud import cloud_to_accumulator
 
 
-def analyze_by_hough_transform(pc, aabb):
+def analyze_by_hough_transform(pc, aabb, name="_"):
     """
     Analyzes a beam layer by 2d hough-transform
 
@@ -33,10 +33,10 @@ def analyze_by_hough_transform(pc, aabb):
     scale = 8
 
     accumulator = cloud_to_accumulator(np.array(pc.points), scale)
-    cv2.imwrite(dir_hough + "accumulator_raw.png", accumulator)
+    cv2.imwrite(dir_hough + name + "_accumulator_raw.png", accumulator)
 
     ret, accumulator = cv2.threshold(accumulator, 22, 255, cv2.THRESH_BINARY)
-    cv2.imwrite(dir_hough + "accumulator_threshold.png", accumulator)
+    cv2.imwrite(dir_hough + name + "_accumulator_threshold.png", accumulator)
 
     output_raw = cv2.cvtColor(accumulator, cv2.COLOR_GRAY2BGR)
     output_joined = np.copy(output_raw)
@@ -51,7 +51,7 @@ def analyze_by_hough_transform(pc, aabb):
 
     # Output raw lines graphic
     output_raw = output_raw.astype(np.uint8)
-    cv2.imwrite(dir_hough + "lines_raw.png", output_raw)
+    cv2.imwrite(dir_hough + name + "_lines_raw.png", output_raw)
 
     # Find final outlines
     lines_h = []
@@ -104,7 +104,7 @@ def analyze_by_hough_transform(pc, aabb):
     layer_v.finalize()
 
     output_joined = output_joined.astype(np.uint8)
-    cv2.imwrite(dir_hough + "lines_joined.png", output_joined)
+    cv2.imwrite(dir_hough + name + "_lines_joined.png", output_joined)
 
     if settings.read("display.hough"):
         timer.pause("Hough Analysis")

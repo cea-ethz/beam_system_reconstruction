@@ -11,7 +11,7 @@ from tkinter import filedialog
 
 import analysis_beams
 import analysis_columns
-import analysis_hough
+import analysis_quality
 import analysis_walls
 import settings
 import timer
@@ -20,7 +20,7 @@ import util_graph
 import util_cloud
 
 # testing methods
-# - Percentage of found elements / missed count?
+# X Percentage of found elements / missed count?
 # - AVerage CS Offset
 # - Average length diff
 # - Average CS diff (one/two D?) (Manhattan?)
@@ -29,6 +29,7 @@ import util_cloud
 # === DEFINITIONS ===
 
 settings.write("do_dag_highlighting", False)
+
 
 def set_up_vector(vis):
     vis.get_view_control().set_up((0.001, 0.000, 0.9999))
@@ -111,17 +112,17 @@ def main():
         #if True:
             gt_geometry_filepath = filedialog.askopenfilename(initialdir=initial_dirname, title="Choose Ground Truth Geometry File")
             db["gt_geometry_path"] = gt_geometry_filepath
-        csv_out = []
+        csv_gt = []
         with open(db["gt_geometry_path"]) as f:
             for line in f:
                 parts = line.split(",")
-                x = float(parts[1]) * 1000
-                y = float(parts[2]) * 1000
-                z = float(parts[3]) * 1000
-                dx = float(parts[4]) * 1000
-                dy = float(parts[5]) * 1000
-                dz = float(parts[6]) * 1000
-                rot = float(int(math.degrees(float(parts[7]))))
+                x = float(parts[2]) * 1000
+                y = float(parts[3]) * 1000
+                z = float(parts[4]) * 1000
+                dx = float(parts[5]) * 1000
+                dy = float(parts[6]) * 1000
+                dz = float(parts[7]) * 1000
+                rot = float(int(math.degrees(float(parts[8]))))
                 if rot < 0:
                     rot += 360
 
@@ -142,18 +143,21 @@ def main():
 
                 bb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
                 #bb.color = (1, 0.5, 0) if parts[0] == "column" else (0, 0, 1)
-                bb.color = (0,0,1)
+                bb.color = (0, 0, 1)
 
                 if settings.read("visibility.ground_truth_geometry"):
                     ui.vis.add_geometry(bb)
 
                 out_line = parts[0]
+                out_line += ",{}".format(parts[1])
                 out_line += ",{},{},{}".format(*bb.get_min_bound())
                 out_line += ",{},{},{}".format(*bb.get_max_bound())
-                csv_out.append(out_line)
-        with open("out_gt.csv" ,'w') as file:
-            for line in csv_out:
+                csv_gt.append(out_line)
+        with open(ui.dir_output + "geometry_gt.csv",'w') as file:
+            for line in csv_gt:
                 file.write("{}\n".format(line))
+
+        db["csv_gt"] = csv_gt
 
     # Calculate aabb for main cloud
     aabb_main = pc_main.get_axis_aligned_bounding_box()
@@ -213,7 +217,7 @@ def main():
     print("Secondary Beams : {}".format(len(beam_layer_secondary.beams)))
 
     # Add final beam visuals to scene
-    scan_csv = []
+    csv_scan = []
     if settings.read("visibility.beams_final"):
         for beam in beam_layer_primary.beams:
             if beam.cloud is not None:
@@ -222,9 +226,10 @@ def main():
             ui.vis.add_geometry(beam.aabb)
 
             out_line = "beam"
+            out_line += ",{}".format(beam.axis)
             out_line += ",{},{},{}".format(*beam.aabb.get_min_bound())
             out_line += ",{},{},{}".format(*beam.aabb.get_max_bound())
-            scan_csv.append(out_line)
+            csv_scan.append(out_line)
         for beam in beam_layer_secondary.beams:
             if beam.cloud is not None:
                 ui.vis.add_geometry(beam.cloud)
@@ -232,9 +237,10 @@ def main():
             ui.vis.add_geometry(beam.aabb)
 
             out_line = "beam"
+            out_line += ",{}".format(beam.axis)
             out_line += ",{},{},{}".format(*beam.aabb.get_min_bound())
             out_line += ",{},{},{}".format(*beam.aabb.get_max_bound())
-            scan_csv.append(out_line)
+            csv_scan.append(out_line)
 
     # Export cross sections
     for beam in beam_layer_primary.beams:
@@ -270,12 +276,15 @@ def main():
                 ui.vis.add_geometry(column.aabb)
 
                 out_line = "column"
+                out_line += ",{}".format(2)
                 out_line += ",{},{},{}".format(*column.aabb.get_min_bound())
                 out_line += ",{},{},{}".format(*column.aabb.get_max_bound())
-                scan_csv.append(out_line)
-    with open("out_scan.csv", 'w') as file:
-        for line in scan_csv:
+                csv_scan.append(out_line)
+    with open(ui.dir_output + "geometry_scan.csv", 'w') as file:
+        for line in csv_scan:
             file.write("{}\n".format(line))
+    with shelve.open(ui.dir_output + filename) as db:
+        db["csv_scan"] = csv_scan
     timer.end("Column Analysis")
 
     # === Construct DAG Diagram ===
@@ -352,12 +361,27 @@ def main():
         plt.clf()
 
     timer.end("DAG Analysis")
+
+    # === Check analysis quality ===
+    timer.start("Quality Check")
+    with shelve.open(ui.dir_output + filename) as db:
+        column_diff, beam_diff = analysis_quality.check_element_counts(db["csv_gt"], db["csv_scan"])
+        column_cs_diff = analysis_quality.check_cross_section_offset(db["csv_gt"], db["csv_scan"])
+
+        print("Element Count Diff : {} columns, {} beams".format(column_diff, beam_diff))
+        print("Average Cross Section Offset : {}".format(column_cs_diff))
+
+    timer.end("Quality Check")
+
     timer.end("Total Analysis")
 
     ui.vis.run()
     ui.vis.destroy_window()
 
     timer.check_for_orphans()
+
+
+
 
 
 # === Script entry ===

@@ -114,7 +114,7 @@ def _analyze_z_level(pc, aabb, peak):
 
     if len(beam_layers):
         timer.pause("Beam Analysis")
-        beam_layers_hough = analysis_hough.analyze_by_hough_transform(pc, aabb)
+        beam_layers_hough = analysis_hough.analyze_by_hough_transform(pc, aabb, name=str(peak))
         timer.unpause("Beam Analysis")
         return beam_layers_hough
 
