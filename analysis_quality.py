@@ -42,18 +42,26 @@ def check_column_quality(data_gt, data_scan):
 
 
 def check_beam_quality(data_gt, data_scan):
-    beam_cs_offsets = []
-    beam_length_diffs = []
-    new_offsets, new_lengths = _get_beam_layer_diffs(data_gt, data_scan, 0)
-    beam_cs_offsets += new_offsets
-    beam_length_diffs += new_lengths
-    new_offsets, new_lengths = _get_beam_layer_diffs(data_gt, data_scan, 1)
-    beam_cs_offsets += new_offsets
-    beam_length_diffs += new_lengths
+    beam_diffs_cs_offsets = []
+    beam_diffs_cs_size = []
+    beam_diffs_length = []
 
-    beam_cs_offset_average = sum(beam_cs_offsets) / len(beam_cs_offsets)
-    beam_length_diff_average = sum(beam_length_diffs) / len(beam_length_diffs)
-    return beam_cs_offset_average, beam_length_diff_average
+    new_offsets, new_cs, new_lengths = _get_beam_layer_diffs(data_gt, data_scan, 0)
+    beam_diffs_cs_offsets += new_offsets
+    beam_diffs_cs_size += new_cs
+    beam_diffs_length += new_lengths
+    new_offsets, new_cs, new_lengths = _get_beam_layer_diffs(data_gt, data_scan, 1)
+    beam_diffs_cs_offsets += new_offsets
+    beam_diffs_cs_size += new_cs
+    beam_diffs_length += new_lengths
+
+    print(beam_diffs_length)
+    print(beam_diffs_cs_size)
+
+    beam_cs_offset_average = sum(beam_diffs_cs_offsets) / len(beam_diffs_cs_offsets)
+    beam_cs_size_average = sum(beam_diffs_cs_size) / len(beam_diffs_cs_size)
+    beam_length_diff_average = sum(beam_diffs_length) / len(beam_diffs_length)
+    return beam_cs_offset_average, beam_cs_size_average, beam_length_diff_average
 
 
 def _get_column_centers(csv):
@@ -80,6 +88,7 @@ def _get_column_dims(csv):
 
 def _get_beam_layer_diffs(data_gt, data_scan, axis):
     beam_cs_offset_diffs = []
+    beam_cs_size_diffs = []
     beam_length_diffs = []
     beam_centers_gt_2d = _get_beam_centers_2d(data_gt, axis)
     beam_centers_scan_2d = _get_beam_centers_2d(data_scan, axis)
@@ -102,9 +111,13 @@ def _get_beam_layer_diffs(data_gt, data_scan, axis):
                 best_id = i
                 best_dist = dist
         dist_2d = math.dist(center_scan_2d, beam_centers_gt_2d[best_id])
+        if dist_2d > 1000:
+            continue
         beam_cs_offset_diffs.append(dist_2d)
         beam_length_diffs.append(abs(beam_dims[0] - beam_dims_gt[best_id][0]))
-    return beam_cs_offset_diffs, beam_length_diffs
+        print("{} | {}".format(beam_dims,beam_dims_gt[best_id]))
+        beam_cs_size_diffs.append(abs(beam_dims[1] - beam_dims_gt[best_id][1]) + abs(beam_dims[2] - beam_dims_gt[best_id][2]))
+    return beam_cs_offset_diffs, beam_cs_size_diffs, beam_length_diffs
 
 
 def _get_beam_centers_2d(csv, axis):
@@ -125,8 +138,7 @@ def _get_beam_centers_3d(csv, axis):
         parts = line.split(",")
         if parts[0] != "beam" or int(parts[1]) != axis:
             continue
-        x_axis = 2 if axis else 3
-        center = [float(parts[x_axis]), float(parts[4])]
+        center = [float(parts[2]), float(parts[3]), float(parts[4])]
         centers.append(center)
     return centers
 
@@ -137,9 +149,8 @@ def _get_beam_dims(csv, axis):
         parts = line.split(",")
         if parts[0] != "beam" or int(parts[1]) != axis:
             continue
-        x_axis = 2 if axis else 3
         dim = [float(parts[5]), float(parts[6]), float(parts[7])]
-        if axis:
+        if not axis:
             dim[0], dim[1] = dim[1], dim[0]
         dims.append(dim)
     return dims

@@ -382,14 +382,17 @@ def run_quality_checks():
         column_diff, beam_diff = analysis_quality.check_element_counts(db["csv_gt"], db["csv_scan"])
         column_cs_offset_average, column_cs_size_average, column_length_average = analysis_quality.check_column_quality(
             db["csv_gt"], db["csv_scan"])
-        beam_cs_offset_average, beam_length_average = analysis_quality.check_beam_quality(db["csv_gt"], db["csv_scan"])
+        beam_cs_offset_average, beam_cs_size_average, beam_length_average = analysis_quality.check_beam_quality(db["csv_gt"], db["csv_scan"])
         # column_cs_diff, beam_cs_diff = analysis_quality.check_cross_section_offset(db["csv_gt"], db["csv_scan"])
 
         print("Element Count Diff : {} columns, {} beams".format(column_diff, beam_diff))
+
         print("Average Column Cross Section Offset : {}".format(column_cs_offset_average))
         print("Average Column Cross Section Size : {}".format(column_cs_size_average))
         print("Average Column Length Difference : {}".format(column_length_average))
+
         print("Average Beam Cross Section Offset : {}".format(beam_cs_offset_average))
+        print("Average Beam Cross Section Size : {}".format(beam_cs_size_average))
         print("Average Beam Length Difference : {}".format(beam_length_average))
 
     timer.end("Quality Check")
