@@ -60,6 +60,7 @@ def main():
     dirname = os.path.dirname(filepath) + "/"
     basename = os.path.basename(filepath)
     filename = os.path.splitext(basename)[0]
+    ui.filename = filename
     ui.dir_output = dirname + filename + "/"
 
     with shelve.open("settings") as db:
@@ -153,7 +154,7 @@ def main():
                 #out_line += ",{},{},{}".format(*bb.get_min_bound())
                 #out_line += ",{},{},{}".format(*bb.get_max_bound())
                 out_line += ",{},{},{}".format(*bb.get_center())
-                out_line += ",{},{},{}".format(*bb.get_extent())
+                out_line += ",{},{},{}".format(*[abs(n) for n in bb.get_extent()])
                 csv_gt.append(out_line)
         with open(ui.dir_output + "geometry_gt.csv",'w') as file:
             for line in csv_gt:
@@ -257,7 +258,7 @@ def main():
         img = util_cloud.cloud_to_accumulator(np.array(flat_cloud.points), scale=2)
         img = cv2.transpose(img)
         #img = cv2.threshold()
-        print(img.shape)
+        #print(img.shape)
         cv2.imwrite(ui.dir_output + "cross_sections/" + str(beam.id) + ".png", img)
 
     timer.end("Beam Analysis")
@@ -364,23 +365,7 @@ def main():
 
     timer.end("DAG Analysis")
 
-    # === Check analysis quality ===
-    timer.start("Quality Check")
-    with shelve.open(ui.dir_output + filename) as db:
-
-        column_diff, beam_diff = analysis_quality.check_element_counts(db["csv_gt"], db["csv_scan"])
-        column_cs_offset_average, column_cs_size_average, column_length_average = analysis_quality.check_column_quality(db["csv_gt"], db["csv_scan"])
-        beam_cs_offset_average, beam_length_average = analysis_quality.check_beam_quality(db["csv_gt"], db["csv_scan"])
-        #column_cs_diff, beam_cs_diff = analysis_quality.check_cross_section_offset(db["csv_gt"], db["csv_scan"])
-
-        print("Element Count Diff : {} columns, {} beams".format(column_diff, beam_diff))
-        print("Average Column Cross Section Offset : {}".format(column_cs_offset_average))
-        print("Average Column Cross Section Size : {}".format(column_cs_size_average))
-        print("Average Column Length Difference : {}".format(column_length_average))
-        print("Average Beam Cross Section Offset : {}".format(beam_cs_offset_average))
-        print("Average Beam Length Difference : {}".format(beam_length_average))
-
-    timer.end("Quality Check")
+    run_quality_checks()
 
     timer.end("Total Analysis")
 
@@ -390,7 +375,24 @@ def main():
     timer.check_for_orphans()
 
 
+def run_quality_checks():
+    # === Check analysis quality ===
+    timer.start("Quality Check")
+    with shelve.open(ui.dir_output + ui.filename) as db:
+        column_diff, beam_diff = analysis_quality.check_element_counts(db["csv_gt"], db["csv_scan"])
+        column_cs_offset_average, column_cs_size_average, column_length_average = analysis_quality.check_column_quality(
+            db["csv_gt"], db["csv_scan"])
+        beam_cs_offset_average, beam_length_average = analysis_quality.check_beam_quality(db["csv_gt"], db["csv_scan"])
+        # column_cs_diff, beam_cs_diff = analysis_quality.check_cross_section_offset(db["csv_gt"], db["csv_scan"])
 
+        print("Element Count Diff : {} columns, {} beams".format(column_diff, beam_diff))
+        print("Average Column Cross Section Offset : {}".format(column_cs_offset_average))
+        print("Average Column Cross Section Size : {}".format(column_cs_size_average))
+        print("Average Column Length Difference : {}".format(column_length_average))
+        print("Average Beam Cross Section Offset : {}".format(beam_cs_offset_average))
+        print("Average Beam Length Difference : {}".format(beam_length_average))
+
+    timer.end("Quality Check")
 
 
 # === Script entry ===

@@ -6,4 +6,6 @@ axs = None
 
 dir_output = None
 
+filename = None
+
 DG = nx.DiGraph()

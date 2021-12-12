@@ -90,8 +90,6 @@ def _get_beam_layer_diffs(data_gt, data_scan, axis):
     beam_dims_gt = _get_beam_dims(data_gt, axis)
     beam_dims_scan = _get_beam_dims(data_scan, axis)
 
-    #print(beam_dims_gt)
-
     while len(beam_centers_scan_3d):
         center_scan_3d = beam_centers_scan_3d.pop()
         center_scan_2d = beam_centers_scan_2d.pop()
