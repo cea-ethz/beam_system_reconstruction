@@ -112,11 +112,13 @@ def _analyze_z_level(pc, aabb, peak):
             util_histogram.render_bar(ui.axs[1, 2], hist_y, hist_y_smooth, peaks_y)
             beam_layers.append(layer)
 
+    # Logic for which method is used isn't great here,
     if len(beam_layers):
         timer.pause("Beam Analysis")
         beam_layers_hough = analysis_hough.analyze_by_hough_transform(pc, aabb, name=str(peak))
         timer.unpause("Beam Analysis")
-        return beam_layers_hough
+        if settings.read("analysis.use_hough"):
+            return beam_layers_hough
 
     return beam_layers
 

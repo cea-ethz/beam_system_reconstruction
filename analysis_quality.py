@@ -111,7 +111,7 @@ def _get_beam_layer_diffs(data_gt, data_scan, axis):
                 best_id = i
                 best_dist = dist
         dist_2d = math.dist(center_scan_2d, beam_centers_gt_2d[best_id])
-        if dist_2d > 1000:
+        if best_dist > 1000:
             continue
         beam_cs_offset_diffs.append(dist_2d)
         beam_length_diffs.append(abs(beam_dims[0] - beam_dims_gt[best_id][0]))
