@@ -1,5 +1,7 @@
 import math
 
+import numpy as np
+
 
 def check_element_counts(data_gt, data_scan):
     columns_gt, beams_p_gt, beams_s_gt = _count_types(data_gt)
@@ -28,15 +30,17 @@ def check_column_quality(data_gt, data_scan):
             if best_id == -1 or dist < best_dist:
                 best_id = i
                 best_dist = dist
+        if best_id == -1 or best_dist > 1000:
+            continue
         column_diffs_cs_offset.append(best_dist)
         column_diffs_length.append(abs(center_dims[2] - column_dims_gt[best_id][2]))
         column_diffs_cs_size.append(abs(center_dims[0] - column_dims_gt[best_id][0]) + abs(center_dims[1] - column_dims_gt[best_id][1]))
         del column_centers_gt[best_id]
         del column_dims_gt[best_id]
 
-    column_cs_offset_average = sum(column_diffs_cs_offset) / len(column_diffs_cs_offset)
-    column_cs_size_average = sum(column_diffs_cs_size) / len(column_diffs_cs_size)
-    column_length_average = sum(column_diffs_length) / len(column_diffs_length)
+    column_cs_offset_average = _avg(column_diffs_cs_offset)
+    column_cs_size_average = _avg(column_diffs_cs_size)
+    column_length_average = _avg(column_diffs_length)
 
     return column_cs_offset_average, column_cs_size_average, column_length_average
 
@@ -55,13 +59,20 @@ def check_beam_quality(data_gt, data_scan):
     beam_diffs_cs_size += new_cs
     beam_diffs_length += new_lengths
 
-    print(beam_diffs_length)
-    print(beam_diffs_cs_size)
+    #print(beam_diffs_length)
+    #print(beam_diffs_cs_size)
 
-    beam_cs_offset_average = sum(beam_diffs_cs_offsets) / len(beam_diffs_cs_offsets)
-    beam_cs_size_average = sum(beam_diffs_cs_size) / len(beam_diffs_cs_size)
-    beam_length_diff_average = sum(beam_diffs_length) / len(beam_diffs_length)
+    beam_cs_offset_average = _avg(beam_diffs_cs_offsets)
+    beam_cs_size_average = _avg(beam_diffs_cs_size)
+    beam_length_diff_average = _avg(beam_diffs_length)
     return beam_cs_offset_average, beam_cs_size_average, beam_length_diff_average
+
+
+def _avg(data):
+    if len(data) > 0:
+        return sum(data) / len(data)
+    else:
+        return np.NaN
 
 
 def _get_column_centers(csv):
@@ -112,6 +123,7 @@ def _get_beam_layer_diffs(data_gt, data_scan, axis):
                 best_dist = dist
         dist_2d = math.dist(center_scan_2d, beam_centers_gt_2d[best_id])
         if best_dist > 1000:
+            print("Best dist : {}".format(best_dist))
             continue
         beam_cs_offset_diffs.append(dist_2d)
         beam_length_diffs.append(abs(beam_dims[0] - beam_dims_gt[best_id][0]))

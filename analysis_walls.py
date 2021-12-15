@@ -21,13 +21,13 @@ def analyze_walls(pc, aabb):
     hist_x, bin_edges = np.histogram(points[:, 0], bin_count_x)
     hist_x, hist_x_smooth = util_histogram.process_histogram(hist_x)
     peaks_x, properties = signal.find_peaks(hist_x_smooth, width=1, prominence=0.4)
-    print("X Peaks {} : ".format(peaks_x))
+    print(" X Peaks {} : ".format(peaks_x))
 
     bin_count_y = math.ceil(aabb.get_extent()[1] / bin_width)
     hist_y, bin_edges = np.histogram(points[:, 1], bin_count_y)
     hist_y, hist_y_smooth = util_histogram.process_histogram(hist_y)
     peaks_y, properties = signal.find_peaks(hist_y_smooth, width=1, prominence=0.4)
-    print("Y Peaks {} : ".format(peaks_y))
+    print(" Y Peaks {} : ".format(peaks_y))
 
     util_histogram.render_bar(ui.axs[0, 1], hist_x, hist_x_smooth, peaks_x)
     util_histogram.render_bar(ui.axs[0, 2], hist_y, hist_y_smooth, peaks_y)

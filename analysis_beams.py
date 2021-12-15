@@ -113,14 +113,13 @@ def _analyze_z_level(pc, aabb, peak):
             beam_layers.append(layer)
 
     # Logic for which method is used isn't great here,
-    if len(beam_layers):
+    if settings.read("analysis.use_hough") and len(beam_layers):
         timer.pause("Beam Analysis")
         beam_layers_hough = analysis_hough.analyze_by_hough_transform(pc, aabb, name=str(peak))
         timer.unpause("Beam Analysis")
-        if settings.read("analysis.use_hough"):
-            return beam_layers_hough
-
-    return beam_layers
+        return beam_layers_hough
+    else:
+        return beam_layers
 
 
 def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
