@@ -131,7 +131,7 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
 
     for peak in peaks:
         # 0.15 compromise
-        slice_position, slice_width = util_histogram.get_peak_slice_params(hist, peak, 0.1) # This drop either cuts off too much of an end value or allows the other beams to get oo large
+        slice_position, slice_width = util_histogram.get_peak_slice_params(hist, peak, 0.5) # This drop either cuts off too much of an end value or allows the other beams to get oo large
         # Drop false positives that are obviously overwide
         if slice_width * bin_width > 1000:
             continue

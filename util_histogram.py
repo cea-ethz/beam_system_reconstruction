@@ -75,7 +75,7 @@ def render_bar(ax, hist_a, hist_b, peaks):
     bar_list_b = ax.bar(range(len(hist_b)), hist_b, color=color_back, width=1)
     #bar_list_a = ax.bar(range(len(hist_a)), hist_a, color=color_front, width=1)
     mean_b = np.mean(hist_b)
-    ax.axhline(mean_b, color='orange')
+    #ax.axhline(mean_b, color='orange')
 
     for peak in peaks:
         bar_list_b[peak].set_color(color_back_highlight)

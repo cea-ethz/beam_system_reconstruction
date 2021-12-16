@@ -19,7 +19,8 @@ import ui
 import util_graph
 import util_cloud
 
-# testing methods
+# TODO : Quality check graph diff
+# TODO : Autocrop for chamfer distance
 # X Percentage of found elements / missed count?
 # X Average CS Offset
 # X Average length diff
@@ -57,7 +58,9 @@ def main():
 
             timer.start("PC Ground Truth Chamfer Distance")
             pc_gt = o3d.io.read_point_cloud(db["ground_truth_cloud_path"])
-            chamfer_distance = util_cloud.chamfer_distance(pc_main, pc_gt)
+            chamfer_distance = analysis_quality.compare_point_clouds(pc_main, pc_gt)
+            #chamfer_distance = util_cloud.chamfer_distance(pc_main, pc_gt)
+
             db["ground_truth_distance"] = chamfer_distance
             timer.end("PC Ground Truth Chamfer Distance")
 
@@ -255,7 +258,11 @@ def main():
 
         nx.draw(ui.DG, pos, node_color=node_colors, edge_color=edge_colors, labels=labels, with_labels=True, node_size=450, font_color="white")
     else:
-        nx.draw(ui.DG, pos, labels=labels, with_labels=True, node_size=450, font_color="white")
+        nx.draw(ui.DG, pos, labels=labels, node_color="#CCCCCC", with_labels=True, node_size=650, font_color="black", font_size=18)
+        #nodes = nx.draw_networkx_nodes(ui.DG, pos)
+        #nodes.set_edgecolor("#1f78b4")
+        ##nodes.set_sizes(650)
+        #nx.draw_networkx_edges(ui.DG, pos, node_size=650)
 
     plt.savefig(ui.dir_output + ui.filename + "_graph.png")
     if settings.read("display.dag"):

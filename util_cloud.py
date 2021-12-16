@@ -150,11 +150,13 @@ def chamfer_distance(a, b):
     :param b:
     :return:
     """
+    #print("Chamfer Distance with Point Counts : {}, {}".format(len(a.points), len(b.points)))
+
     dist_a = np.asarray(a.compute_point_cloud_distance(b))
     dist_b = np.asarray(b.compute_point_cloud_distance(a))
 
-    dist_a = np.sum(dist_a) / len(a.points)
-    dist_b = np.sum(dist_b) / len(b.points)
+    dist_a = np.sum(dist_a) / len(dist_a)
+    dist_b = np.sum(dist_b) / len(dist_b)
 
     return dist_a + dist_b
 

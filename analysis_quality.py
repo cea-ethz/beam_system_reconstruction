@@ -1,6 +1,46 @@
 import math
 
 import numpy as np
+import open3d.cpu.pybind.geometry
+
+import ui
+import util_cloud
+
+
+def compare_point_clouds(pc_a, pc_b):
+    aabb_a = pc_a.get_axis_aligned_bounding_box()
+    aabb_b = pc_b.get_axis_aligned_bounding_box()
+
+    center = (aabb_a.get_center() + aabb_b.get_center()) / 2
+
+    a_min = aabb_a.get_min_bound() - center
+    a_max = aabb_a.get_max_bound() - center
+    b_min = aabb_b.get_min_bound() - center
+    b_max = aabb_b.get_max_bound() - center
+
+    min_x = max(a_min[0], b_min[0])
+    min_y = max(a_min[1], b_min[1])
+    min_z = max(a_min[2], b_min[2])
+
+    max_x = min(a_max[0], b_max[0])
+    max_y = min(a_max[1], b_max[1])
+    max_z = min(a_max[2], b_max[2])
+
+    min_bound = np.array((min_x, min_y, min_z)) + center
+    max_bound = np.array((max_x, max_y, max_z)) + center
+
+    aabb_crop = open3d.cpu.pybind.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+
+    pc_a_crop = pc_a.crop(aabb_crop)
+    pc_b_crop = pc_b.crop(aabb_crop)
+
+    distance = util_cloud.chamfer_distance(pc_a_crop, pc_b_crop)
+
+    pc_a_crop.paint_uniform_color([1, 0, 0])
+    pc_b_crop.paint_uniform_color([0, 0, 1])
+    ui.vis.add_geometry(pc_a_crop)
+    ui.vis.add_geometry(pc_b_crop)
+    return distance
 
 
 def check_element_counts(data_gt, data_scan):
@@ -59,8 +99,8 @@ def check_beam_quality(data_gt, data_scan):
     beam_diffs_cs_size += new_cs
     beam_diffs_length += new_lengths
 
-    #print(beam_diffs_length)
-    #print(beam_diffs_cs_size)
+    print(beam_diffs_length)
+    print(beam_diffs_cs_size)
 
     beam_cs_offset_average = _avg(beam_diffs_cs_offsets)
     beam_cs_size_average = _avg(beam_diffs_cs_size)
@@ -122,8 +162,8 @@ def _get_beam_layer_diffs(data_gt, data_scan, axis):
                 best_id = i
                 best_dist = dist
         dist_2d = math.dist(center_scan_2d, beam_centers_gt_2d[best_id])
-        if best_dist > 1000:
-            print("Best dist : {}".format(best_dist))
+        if best_id == -1 or best_dist > 1000:
+            #print("Best dist : {}".format(best_dist))
             continue
         beam_cs_offset_diffs.append(dist_2d)
         beam_length_diffs.append(abs(beam_dims[0] - beam_dims_gt[best_id][0]))
