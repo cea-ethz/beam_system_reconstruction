@@ -13,8 +13,9 @@ from BIM_Geometry import Column
 # TODO :  Draw and export column images for debug / documentation
 def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams, z_extents):
     pc_flat = util_cloud.flatten_cloud(pc)
-
-    labels = np.array(pc_flat.cluster_dbscan(eps=12, min_points=10))
+    eps = settings.read("tuning.dbscan_eps")
+    #labels = np.array(pc_flat.cluster_dbscan(eps=12, min_points=10))
+    labels = np.array(pc_flat.cluster_dbscan(eps=eps, min_points=10))
 
     # If column detection failed
     if len(labels) == 0:

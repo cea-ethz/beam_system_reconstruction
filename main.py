@@ -94,6 +94,18 @@ def main():
     plt.setp(ui.axs[1, 1], xlabel='X Axis Bins')
     plt.setp(ui.axs[1, 2], xlabel='Y Axis Bins')
 
+    # Set Tuning Parameters Based on Cloud Size
+    print("Setting Tuning Parameters Based on Cloud")
+    falloff = 0.1 if len(pc_main.points) > 15000000 else 0.25
+    settings.write("tuning.beam_z_falloff", falloff)
+    settings.write("tuning.beam_x_falloff", falloff)
+    print(f"Histogram Falloff of {falloff} Chosen")
+
+    dbscan_eps = 42 if len(pc_main.points) < 1500000 else 12
+    settings.write("tuning.dbscan_eps",dbscan_eps)
+    print(f"DBSCAN eps of {dbscan_eps} Chosen")
+
+
     # === Check for walls ===
     timer.start("Wall Analysis")
     pc_main = analysis_walls.analyze_walls(pc_main, aabb_main)
@@ -117,6 +129,7 @@ def main():
         print("Warning : {} beam layers, handling other than 2 beam layers not yet implemented".format(len(beam_layers)))
         #beam_layers = beam_layers[-2:]
         beam_layers = beam_layers[0:2]
+        column_slice_positions = column_slice_positions[0:1]
         print(len(beam_layers))
 
     primary_id = int(beam_layers[0].mean_spacing < beam_layers[1].mean_spacing)
@@ -174,6 +187,7 @@ def main():
     for column_slice_position in column_slice_positions:
         pc_column = util_cloud.get_slice(pc_main, aabb_main, 2, column_slice_position, 1000, normalized=False)
         aabb_column = pc_column.get_axis_aligned_bounding_box()
+        ui.vis.add_geometry(pc_column)
         z_min = floor_levels[0] + 50 if len(floor_levels) else aabb_main.get_min_bound()[2]
         z_extents = (z_min, beam_layer_primary.average_z)
         columns += analysis_columns.analyze_columns(pc_column, aabb_column, pc_main, aabb_main, beam_layer_primary.beams, z_extents)
