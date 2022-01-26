@@ -115,7 +115,8 @@ def main():
     # Split beams and add final forms to vis
     if len(beam_layers) != 2:
         print("Warning : {} beam layers, handling other than 2 beam layers not yet implemented".format(len(beam_layers)))
-        beam_layers = beam_layers[-2:]
+        #beam_layers = beam_layers[-2:]
+        beam_layers = beam_layers[0:2]
         print(len(beam_layers))
 
     primary_id = int(beam_layers[0].mean_spacing < beam_layers[1].mean_spacing)

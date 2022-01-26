@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import shapely.geometry
 
+import settings
 import ui
 
 
@@ -34,7 +35,8 @@ def analyze_alpha_shape_density2(points, density=0.75, name="alpha"):
     for point in points:
         x = point[1]
         y = point[0]
-        img2[x - 20:x + 20, y - 20:y + 20] = 255
+        of = settings.read("tuning.alpha_density_point_size")
+        img2[x - of:x + of, y - of:y + of] = 255
 
     white_count = np.count_nonzero(img2 == 255)
 

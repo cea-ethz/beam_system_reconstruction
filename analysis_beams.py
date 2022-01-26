@@ -24,12 +24,15 @@ dumb_flag = False
 def detect_beams(pc, aabb):
     points = np.asarray(pc.points)
 
+    # Detect candidate level slices
+
     bin_count_z = math.ceil(aabb.get_extent()[2] / bin_width)
 
     hist_z, bin_edges = np.histogram(points[:, 2], bin_count_z)
     hist_z, hist_z_smooth = util_histogram.process_histogram(hist_z, extension=2)
 
-    peaks, properties = signal.find_peaks(hist_z_smooth, width=1, prominence=0.1)
+    #peaks, properties = signal.find_peaks(hist_z_smooth, width=1, prominence=0.1)
+    peaks, properties = signal.find_peaks(hist_z_smooth, width=3, prominence=0.1, rel_height=0.5)
 
     if len(peaks) == 0:
         print("Error : No Z peaks found")
@@ -46,6 +49,7 @@ def detect_beams(pc, aabb):
         # Get extents of peak
         # TODO: the falloff here needs to be calculated from cloud (e.g. needs to be 0.1 for pg, and 0.25 for gt)
         peak_slice_position, peak_slice_width = util_histogram.get_peak_slice_params(hist_z_smooth, peak, settings.read("tuning.beam_z_falloff"))
+        print(f"Pos : {peak_slice_position} | Width : {peak_slice_width}")
 
         # Get slice at Z height
         pc_slice = util_cloud.get_slice(pc, aabb, 2, peak_slice_position / bin_count_z, peak_slice_width / bin_count_z, normalized=True)

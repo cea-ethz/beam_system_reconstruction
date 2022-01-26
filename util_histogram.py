@@ -52,16 +52,27 @@ def get_peak_slice_params(hist, peak, diff=0.1):
     low = peak-1
     high = peak+1
 
-    for i in range(low - 1, -1, -1):
+    last_low = 999999999
+    for i in range(peak, -1, -1):
+        if hist[i] > last_low:
+            break
         if hist[peak] - hist[i] < diff:
             low = i
+            last_low = hist[i]
         else:
             break
-    for i in range(low+1, len(hist)): # TK should this be high instead of low+1? Borks things when tried but maybe...
+
+    last_high = 999999999
+    for i in range(peak, len(hist)): # TK should this be high instead of low+1? Borks things when tried but maybe...
+        if hist[i] > last_high:
+            break
         if hist[peak] - hist[i] < diff:
             high = i
+            last_high = hist[i]
         else:
             break
+
+
 
     # Manual fix based on observed issues
     high += 1

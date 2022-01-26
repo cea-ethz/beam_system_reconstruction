@@ -30,6 +30,7 @@ def load_user_settings():
     load_setting("tuning", "wall_fill_cutoff", "getfloat")
     load_setting("tuning", "beam_z_falloff", "getfloat")
     load_setting("tuning", "beam_x_falloff", "getfloat")
+    load_setting("tuning", "alpha_density_point_size", "getint")
 
     load_setting("verbosity", "global_level", "getint")
 
