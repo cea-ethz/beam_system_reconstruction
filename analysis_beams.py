@@ -77,7 +77,7 @@ def _analyze_z_level(pc, aabb, peak):
     hist_x = np.pad(hist_x, (padding, padding), 'constant', constant_values=(0, 0))
     hist_x, hist_x_smooth = util_histogram.process_histogram(hist_x)
     mean_x = np.mean(hist_x_smooth)
-    peaks_x, _ = signal.find_peaks(hist_x_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
+    peaks_x, properties_x = signal.find_peaks(hist_x_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
     # Undo padding
     peaks_x -= padding
     hist_x = hist_x[padding:-padding]
@@ -90,7 +90,7 @@ def _analyze_z_level(pc, aabb, peak):
     hist_y = np.pad(hist_y, (padding, padding), 'constant', constant_values=(0, 0))
     hist_y, hist_y_smooth = util_histogram.process_histogram(hist_y)
     mean_y = np.mean(hist_y_smooth)
-    peaks_y, _ = signal.find_peaks(hist_y_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
+    peaks_y, properties_y = signal.find_peaks(hist_y_smooth, width=peak_width, prominence=prominence, rel_height=rel_height)
     # Undo padding
     peaks_y -= padding
     hist_y = hist_y[padding:-padding]
@@ -105,10 +105,10 @@ def _analyze_z_level(pc, aabb, peak):
     beam_layers = []
     if not util_alpha_shape.analyze_alpha_shape_density2(alpha_points, 0.5, "floor_{}.png".format(peak)):
         # Plot X and Y histograms
-        if layer := _analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, bin_count_x):
+        if layer := _analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, properties_x, bin_count_x):
             util_histogram.render_bar(ui.axs[1, 1], hist_x, hist_x_smooth, peaks_x)
             beam_layers.append(layer)
-        if layer := _analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, bin_count_y):
+        if layer := _analyze_beam_system_layer(pc, aabb, 1, hist_y_smooth, peaks_y, properties_y, bin_count_y):
             util_histogram.render_bar(ui.axs[1, 2], hist_y, hist_y_smooth, peaks_y)
             beam_layers.append(layer)
 
@@ -122,25 +122,38 @@ def _analyze_z_level(pc, aabb, peak):
         return beam_layers
 
 
-def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
+def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, properties, source_bin_count):
     not_axis = int(not axis)
 
     global dumb_flag
 
     layer = BeamSystemLayer()
 
-    for peak in peaks:
-        # 0.15 compromise
-        slice_position, slice_width = util_histogram.get_peak_slice_params(hist, peak, 0.5) # This drop either cuts off too much of an end value or allows the other beams to get oo large
-        # Drop false positives that are obviously overwide
-        if slice_width * bin_width > 1000:
-            continue
+    for peak, prop in zip(peaks, properties["prominences"]):
+        #print(prop)
+        slice_position, slice_width = util_histogram.get_peak_slice_params(hist, peak, settings.read("tuning.beam_x_falloff"))
+
+
         beam_slice = util_cloud.get_slice(pc, aabb, axis, slice_position / source_bin_count, slice_width / source_bin_count, normalized=True)
-        beam_slice_points = np.array(beam_slice.points)
+        #ui.vis.add_geometry(beam_slice.get_axis_aligned_bounding_box()) # Add initial aabb guess
+
+        # Control width via standard deviation
+        beam_slice = util_cloud.filter_std(beam_slice, axis)
+        beam_slice = util_cloud.filter_std(beam_slice, 2)
+
+        # Control Length
+
         beam_aabb = beam_slice.get_axis_aligned_bounding_box()
         aabb_c = beam_aabb.get_center()
         aabb_e = beam_aabb.get_extent()
         aabb_he = beam_aabb.get_half_extent()
+
+        # Drop false positives that are obviously overwide
+        if aabb_e[axis] > 1000:
+            continue
+
+        beam_slice_points = np.array(beam_slice.points)
+        median = np.median(beam_slice_points[:, not_axis])
 
         bin_count = math.ceil(aabb_e[not_axis] / bin_width)
         #print("Bin Count : {}".format(bin_count))
@@ -149,7 +162,6 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, source_bin_count):
         beam_hist = util_histogram.smooth_histogram(beam_hist, 2)
 
         # Count out from the median value
-        median = np.median(beam_slice_points[:, not_axis])
         median_bin = int((median - (aabb_c[not_axis] - aabb_he[not_axis])) / aabb_e[not_axis] * bin_count)
         #print("Median {} in {} to {}".format(median,beam_aabb.get_center()[not_axis] - beam_aabb.get_half_extent()[not_axis],beam_aabb.get_center()[not_axis] + beam_aabb.get_half_extent()[not_axis]))
         #print("Median bin : " + str(median_bin))

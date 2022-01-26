@@ -10,7 +10,6 @@ import util_cloud
 import util_histogram
 
 
-
 bin_width = 50
 
 
@@ -50,6 +49,7 @@ def handle_peak(pc, aabb, peak, hist, bin_count, axis):
     #np.savetxt("hist_{}.txt".format(peak), hist)
     position, width = util_histogram.get_peak_slice_params(hist, peak, diff=0.2)
     position += 0.5
+    width += 1.5
     #print("{} : {} : {}".format(peak, position / bin_count, width / bin_count))
     #print(hist)
     peak_slice = util_cloud.get_slice(pc, aabb, axis, position / bin_count, width / bin_count, normalized=True)

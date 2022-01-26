@@ -64,6 +64,10 @@ def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams, z_extents):
         crop = o3d.geometry.AxisAlignedBoundingBox(crop_min, crop_max)
 
         column.pc = pc_main.crop(crop)
+
+        column.pc = util_cloud.filter_std(column.pc, 0, factor=1.5)
+        column.pc = util_cloud.filter_std(column.pc, 1, factor=1.5)
+
         column.aabb = column.pc.get_axis_aligned_bounding_box()
 
     return output_columns

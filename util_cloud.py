@@ -190,3 +190,15 @@ def cloud_to_accumulator(points, scale=8):
     accumulator *= 255
 
     return accumulator
+
+
+def filter_std(cloud, axis, factor=1.25):
+    points = np.array(cloud.points)
+
+    mean = np.mean(points[:, axis])
+    std = np.std(points[:, axis])
+    mask = np.abs(points[:, axis] - mean) < (std * factor)
+
+    points = points[mask]
+    cloud.points = o3d.utility.Vector3dVector(points)
+    return cloud

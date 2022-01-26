@@ -99,8 +99,8 @@ def check_beam_quality(data_gt, data_scan):
     beam_diffs_cs_size += new_cs
     beam_diffs_length += new_lengths
 
-    print(beam_diffs_length)
-    print(beam_diffs_cs_size)
+    #print(beam_diffs_length)
+    #print(beam_diffs_cs_size)
 
     beam_cs_offset_average = _avg(beam_diffs_cs_offsets)
     beam_cs_size_average = _avg(beam_diffs_cs_size)
@@ -167,7 +167,7 @@ def _get_beam_layer_diffs(data_gt, data_scan, axis):
             continue
         beam_cs_offset_diffs.append(dist_2d)
         beam_length_diffs.append(abs(beam_dims[0] - beam_dims_gt[best_id][0]))
-        print("{} | {}".format(beam_dims,beam_dims_gt[best_id]))
+        #print("{} | {}".format(beam_dims,beam_dims_gt[best_id]))
         beam_cs_size_diffs.append(abs(beam_dims[1] - beam_dims_gt[best_id][1]) + abs(beam_dims[2] - beam_dims_gt[best_id][2]))
     return beam_cs_offset_diffs, beam_cs_size_diffs, beam_length_diffs
 

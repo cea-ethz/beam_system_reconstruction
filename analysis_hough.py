@@ -166,7 +166,7 @@ def cluster_lines(lines, axis):
         line = lines.pop()
         for i, cluster in enumerate(clusters):
             l2 = cluster[0]
-            if axdiff(line[0],l2[0],not_axis) < dist:
+            if _axdiff(line[0], l2[0], not_axis) < dist:
                 clusters[i].append(line)
                 break
         clusters.append([line])
@@ -200,19 +200,27 @@ def join_lines(lines, axis, on_dist=10):
     counter = 0
     off_dist = 10
 
+    start = 0
+
     while True:
         flag = False
-        for i, a in enumerate(lines):
+        #for i, a in enumerate(lines):
+        for i in range(start, len(lines)):
             if flag:
                 break
-            for j, b in enumerate(lines):
-                if a == b:
+            a = lines[i]
+            #for j, b in enumerate(lines):
+            for j in range(start, len(lines)):
+                if i == j:
                     continue
                 if flag:
                     break
-                if axdiff(a[0], b[0], not_axis) < off_dist:
-                    if min((axdiff(a[0], b[0], axis), axdiff(a[1], b[1], axis), axdiff(a[0], b[1], axis), axdiff(a[1], b[0], axis))) < on_dist:
-                        new_shift = a[0][not_axis] if axdiff(a[0], a[1], axis) > axdiff(b[0], b[1], axis) else b[0][not_axis]
+
+                b = lines[j]
+                # Check if segments are roughly on same true line
+                if _axdiff(a[0], b[0], not_axis) < off_dist:
+                    if min((_axdiff(a[0], b[0], axis), _axdiff(a[1], b[1], axis), _axdiff(a[0], b[1], axis), _axdiff(a[1], b[0], axis))) < on_dist:
+                        new_shift = a[0][not_axis] if _axdiff(a[0], a[1], axis) > _axdiff(b[0], b[1], axis) else b[0][not_axis]
                         min_new = min((a[0][axis], a[1][axis], b[0][axis], b[1][axis]))
                         max_new = max((a[0][axis], a[1][axis], b[0][axis], b[1][axis]))
                         p0 = (min_new, new_shift) if not axis else (new_shift, min_new)
@@ -230,6 +238,12 @@ def join_lines(lines, axis, on_dist=10):
                         flag = True
                         counter += 1
 
+            # End inner loop
+            if not flag and i == start:
+                start += 1
+
+        # End outer loop
+
         if not flag:
             break
 
@@ -237,6 +251,14 @@ def join_lines(lines, axis, on_dist=10):
     return lines
 
 
-def axdiff(a, b, axis):
-    return abs(a[axis] - b[axis])
+def _axdiff(pa, pb, axis):
+    """
+    Returns the distance between two points only along the specified axis
+
+    :param pa:
+    :param pb:
+    :param axis:
+    :return:
+    """
+    return abs(pa[axis] - pb[axis])
 
