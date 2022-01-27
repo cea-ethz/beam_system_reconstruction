@@ -109,8 +109,6 @@ class Beam(Geometry):
             beam_a = Beam(aabb_a, self.axis, None)
             beam_b = Beam(aabb_b, self.axis, None)
 
-
-
         return beam_a, beam_b
 
 

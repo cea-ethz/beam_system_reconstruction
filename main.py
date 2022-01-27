@@ -96,10 +96,10 @@ def main():
 
     # Set Tuning Parameters Based on Cloud Size
     print("Setting Tuning Parameters Based on Cloud")
-    falloff = 0.1 if len(pc_main.points) > 15000000 else 0.25
-    settings.write("tuning.beam_z_falloff", falloff)
-    settings.write("tuning.beam_x_falloff", falloff)
-    print(f"Histogram Falloff of {falloff} Chosen")
+    #falloff = 0.1 if len(pc_main.points) > 15000000 else 0.25
+    #settings.write("tuning.beam_z_falloff", falloff)
+    #settings.write("tuning.beam_x_falloff", falloff)
+    #print(f"Histogram Falloff of {falloff} Chosen")
 
     dbscan_eps = 42 if len(pc_main.points) < 1500000 else 12
     settings.write("tuning.dbscan_eps",dbscan_eps)

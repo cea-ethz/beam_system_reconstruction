@@ -43,8 +43,8 @@ def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams, z_extents):
 
         # Test candidates for correct dimensions
         if extent_min != 0.0 and \
-           100 <= extent[0] <= 500 and \
-           100 <= extent[1] <= 500 and \
+           60 <= extent[0] <= 500 and \
+           60 <= extent[1] <= 500 and \
            extent_max / extent_min < 2:
             # Ensure that candidates touch at least one primary layer beam
             for beam in primary_beams:

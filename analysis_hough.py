@@ -74,14 +74,14 @@ def analyze_by_hough_transform(pc, aabb, name="_"):
 
     # Join lines and filter out remaining too-short lines
 
-    lines_h = join_lines(lines_h, 0, on_dist=10)
-    lines_v = join_lines(lines_v, 1, on_dist=10)
+    lines_h = _join_lines(lines_h, 0, on_dist=10)
+    lines_v = _join_lines(lines_v, 1, on_dist=10)
 
-    lines_h = join_lines(lines_h, 0, on_dist=50)
-    lines_v = join_lines(lines_v, 1, on_dist=50)
+    lines_h = _join_lines(lines_h, 0, on_dist=50)
+    lines_v = _join_lines(lines_v, 1, on_dist=50)
 
-    lines_h = [line for line in lines_h if line_length(line) > 50]
-    lines_v = [line for line in lines_v if line_length(line) > 50]
+    lines_h = [line for line in lines_h if _line_length(line) > 50]
+    lines_v = [line for line in lines_v if _line_length(line) > 50]
 
     render_lines(output_joined, lines_h, line_color=(255, 0, 0))
     render_lines(output_joined, lines_v, line_color=(0, 255, 0))
@@ -95,12 +95,21 @@ def analyze_by_hough_transform(pc, aabb, name="_"):
     for cluster in clusters_h:
         if beam := cluster_to_beam(cluster, scale, aabb, 0):
             layer_h.add_beam(beam)
-    layer_h.finalize()
 
     layer_v = BeamSystemLayer()
     for cluster in clusters_v:
         if beam := cluster_to_beam(cluster, scale, aabb, 1):
             layer_v.add_beam(beam)
+
+    print(f"Initial H Count : {len(layer_h.beams)}")
+    print(f"Initial V Count : {len(layer_v.beams)}")
+
+    # Extend Beams as Necessary for Later Splitting
+    layer_h = _extend_layer(layer_h, layer_v, 1)
+    layer_v = _extend_layer(layer_v, layer_h, 0)
+
+    # Finalize Beam Layers
+    layer_h.finalize()
     layer_v.finalize()
 
     output_joined = output_joined.astype(np.uint8)
@@ -118,10 +127,54 @@ def analyze_by_hough_transform(pc, aabb, name="_"):
     return [layer_h, layer_v]
 
 
+def _extend_layer(layer_a, layer_b, axis):
+    not_axis = int(not axis)
+
+    d = 200
+
+    for beam_id, beam in enumerate(layer_a.beams):
+        center = beam.aabb.get_center()
+        half_extent = beam.aabb.get_half_extent()
+        pa = np.copy(center)
+        pb = np.copy(center)
+
+        pa[axis] -= half_extent[axis]
+        pb[axis] += half_extent[axis]
+
+        min_bound = beam.aabb.get_min_bound()
+        max_bound = beam.aabb.get_max_bound()
+
+        for beam2 in layer_b.beams:
+            center2 = beam2.aabb.get_center()
+            half_extent2 = beam2.aabb.get_half_extent()
+            pa2 = np.copy(center2)
+            pb2 = np.copy(center2)
+
+            pa2[not_axis] -= half_extent2[not_axis]
+            pb2[not_axis] += half_extent2[not_axis]
+
+            side = center2[axis] < center[axis]
+            start = pa if side else pb
+            if abs(center2[axis] - start[axis]) > d:
+                continue
+            if (pa2[not_axis] - d) <= start[not_axis] <= (pb2[not_axis] + d):
+                if side:
+                    print(f"Axis {axis}, Beam id {beam_id} with center {center}, edge moved from {pa} to {center2[axis]}")
+                    min_bound[axis] = center2[axis]
+                else:
+                    print(f"Axis {axis}, Beam with {beam_id} center {center}, edge moved from {pb} to {center2[axis]}")
+                    max_bound[axis] = center2[axis]
+
+        beam.aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+
+    return layer_a
+
+
 def cluster_to_beam(cluster, scale, aabb, axis):
-    min_bound, max_bound = get_cluster_extents(cluster)
+    min_bound, max_bound = _get_cluster_extents(cluster)
     min_bound *= scale
     max_bound *= scale
+    # Shift elements, as image origin was at corner of bounding box
     min_bound[0] += aabb.get_min_bound()[1]
     min_bound[1] += aabb.get_min_bound()[0]
     max_bound[0] += aabb.get_min_bound()[1]
@@ -151,8 +204,15 @@ def render_lines(img, lines, line_color=(255, 0, 0), end_color=(0, 0, 255)):
 
 
 def cluster_lines(lines, axis):
+    """
+    Join together lines that likely belong to opposite sides of the same beam
+
+    :param lines:
+    :param axis:
+    :return:
+    """
     not_axis = int(not axis)
-    lengths = [line_length(line) for line in lines]
+    lengths = [_line_length(line) for line in lines]
     clusters = []
     dist = 50
 
@@ -174,7 +234,7 @@ def cluster_lines(lines, axis):
     return clusters
 
 
-def get_cluster_extents(cluster):
+def _get_cluster_extents(cluster):
     x_vals = []
     x_vals += [line[0][0] for line in cluster]
     x_vals += [line[1][0] for line in cluster]
@@ -189,13 +249,13 @@ def get_cluster_extents(cluster):
     return min_bound, max_bound
 
 
-def line_length(line):
+def _line_length(line):
     p0, p1 = line
     d = math.sqrt(pow(p0[0] - p1[0], 2) + pow(p0[1] - p1[1], 2))
     return d
 
 
-def join_lines(lines, axis, on_dist=10):
+def _join_lines(lines, axis, on_dist=10):
     not_axis = int(not axis)
     counter = 0
     off_dist = 10
