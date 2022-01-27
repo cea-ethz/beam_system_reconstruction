@@ -325,6 +325,9 @@ def query_filepaths():
     if not os.path.exists(ui.dir_output + "cross_sections/"):
         os.makedirs(ui.dir_output + "cross_sections/")
 
+    if not os.path.exists(ui.dir_output + "scaling_density/"):
+        os.makedirs(ui.dir_output + "scaling_density/")
+
 
 def setup_vis():
     vis = o3d.visualization.VisualizerWithKeyCallback()

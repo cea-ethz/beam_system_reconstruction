@@ -4,6 +4,7 @@ import numpy as np
 import shapely.geometry
 
 import settings
+import timer
 import ui
 
 
@@ -17,6 +18,9 @@ def analyze_alpha_shape_density2(points, density=0.75, name="alpha"):
     :param name:
     :return:
     """
+
+    #timer.start("alpha")
+
     alpha_hull = alphashape.alphashape(points, 0)
 
     w = int(alpha_hull.bounds[2] - alpha_hull.bounds[0]) + 2
@@ -59,6 +63,8 @@ def analyze_alpha_shape_density2(points, density=0.75, name="alpha"):
     img[np.where(img2 == 255)] = (255, 255, 0)
 
     cv2.imwrite(ui.dir_output + "alpha_shapes/" + name, img)
+
+    #timer.end("alpha")
 
     return density_factor > density
 

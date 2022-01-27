@@ -207,7 +207,7 @@ def _cluster_lines(lines, axis, scale):
             l2 = cluster[0]
             if _axdiff(line[0], l2[0], not_axis) < dist:
                 clusters[i].append(line)
-                print(f"Axis : {axis},cluster {i},  line {line} clustered to line {l2}")
+                #print(f"Axis : {axis},cluster {i},  line {line} clustered to line {l2}")
                 break
         clusters.append([line])
 
