@@ -20,6 +20,7 @@ def analyze_by_hough_transform(pc, aabb, name="_"):
 
     :param pc: Pointcloud representing the guessed beam layer
     :param aabb: Bounding box for the point cloud
+    :param name: Name for output file
     :return: Array of layers corresponding to beam directions
     """
 
@@ -47,7 +48,7 @@ def analyze_by_hough_transform(pc, aabb, name="_"):
     if settings.read("verbosity.global_level") == 2:
         print("{} lines found".format(len(lines)))
 
-    render_lines(output_raw, lines)
+    _render_lines(output_raw, lines)
 
     # Output raw lines graphic
     output_raw = output_raw.astype(np.uint8)
@@ -83,22 +84,22 @@ def analyze_by_hough_transform(pc, aabb, name="_"):
     lines_h = [line for line in lines_h if _line_length(line) > 50]
     lines_v = [line for line in lines_v if _line_length(line) > 50]
 
-    render_lines(output_joined, lines_h, line_color=(255, 0, 0))
-    render_lines(output_joined, lines_v, line_color=(0, 255, 0))
-    render_lines(output_joined, lines_other, line_color=(255, 0, 255))
+    _render_lines(output_joined, lines_h, line_color=(255, 0, 0))
+    _render_lines(output_joined, lines_v, line_color=(0, 255, 0))
+    _render_lines(output_joined, lines_other, line_color=(255, 0, 255))
 
     # Detect beam positions
-    clusters_h = cluster_lines(lines_h, 0)
-    clusters_v = cluster_lines(lines_v, 1)
+    clusters_h = _cluster_lines(lines_h, 0, scale)
+    clusters_v = _cluster_lines(lines_v, 1, scale)
 
     layer_h = BeamSystemLayer()
     for cluster in clusters_h:
-        if beam := cluster_to_beam(cluster, scale, aabb, 0):
+        if beam := _cluster_to_beam(cluster, scale, aabb, 0):
             layer_h.add_beam(beam)
 
     layer_v = BeamSystemLayer()
     for cluster in clusters_v:
-        if beam := cluster_to_beam(cluster, scale, aabb, 1):
+        if beam := _cluster_to_beam(cluster, scale, aabb, 1):
             layer_v.add_beam(beam)
 
     print(f"Initial H Count : {len(layer_h.beams)}")
@@ -159,10 +160,8 @@ def _extend_layer(layer_a, layer_b, axis):
                 continue
             if (pa2[not_axis] - d) <= start[not_axis] <= (pb2[not_axis] + d):
                 if side:
-                    print(f"Axis {axis}, Beam id {beam_id} with center {center}, edge moved from {pa} to {center2[axis]}")
                     min_bound[axis] = center2[axis]
                 else:
-                    print(f"Axis {axis}, Beam with {beam_id} center {center}, edge moved from {pb} to {center2[axis]}")
                     max_bound[axis] = center2[axis]
 
         beam.aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
@@ -170,7 +169,52 @@ def _extend_layer(layer_a, layer_b, axis):
     return layer_a
 
 
-def cluster_to_beam(cluster, scale, aabb, axis):
+def _render_lines(img, lines, line_color=(255, 0, 0), end_color=(0, 0, 255)):
+    # Draw lines
+    for line in lines:
+        p0, p1 = line
+        cv2.line(img, p0, p1, line_color, 2)
+
+    # Draw line endpoints
+    for line in lines:
+        p0, p1 = line
+        cv2.circle(img, p0, 2, end_color, -1)
+        cv2.circle(img, p1, 2, end_color, -1)
+
+
+def _cluster_lines(lines, axis, scale):
+    """
+    Join together lines that likely belong to opposite sides of the same beam
+
+    :param lines:
+    :param axis:
+    :return:
+    """
+    not_axis = int(not axis)
+    lengths = [_line_length(line) for line in lines]
+    clusters = []
+    dist = 400 / scale
+
+    lines = [x for _, x in sorted(zip(lengths, lines))]
+    lines.reverse()
+
+    clusters.append([])
+    clusters[-1].append(lines.pop())
+
+    while len(lines):
+        line = lines.pop()
+        for i, cluster in enumerate(clusters):
+            l2 = cluster[0]
+            if _axdiff(line[0], l2[0], not_axis) < dist:
+                clusters[i].append(line)
+                print(f"Axis : {axis},cluster {i},  line {line} clustered to line {l2}")
+                break
+        clusters.append([line])
+
+    return clusters
+
+
+def _cluster_to_beam(cluster, scale, aabb, axis):
     min_bound, max_bound = _get_cluster_extents(cluster)
     min_bound *= scale
     max_bound *= scale
@@ -188,50 +232,6 @@ def cluster_to_beam(cluster, scale, aabb, axis):
     beam_aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
     beam = Beam(beam_aabb, axis, None)
     return beam
-
-
-def render_lines(img, lines, line_color=(255, 0, 0), end_color=(0, 0, 255)):
-    # Draw lines
-    for line in lines:
-        p0, p1 = line
-        cv2.line(img, p0, p1, line_color, 2)
-
-    # Draw line endpoints
-    for line in lines:
-        p0, p1 = line
-        cv2.circle(img, p0, 2, end_color, -1)
-        cv2.circle(img, p1, 2, end_color, -1)
-
-
-def cluster_lines(lines, axis):
-    """
-    Join together lines that likely belong to opposite sides of the same beam
-
-    :param lines:
-    :param axis:
-    :return:
-    """
-    not_axis = int(not axis)
-    lengths = [_line_length(line) for line in lines]
-    clusters = []
-    dist = 50
-
-    lines = [x for _, x in sorted(zip(lengths, lines))]
-    lines.reverse()
-
-    clusters.append([])
-    clusters[-1].append(lines.pop())
-
-    while len(lines):
-        line = lines.pop()
-        for i, cluster in enumerate(clusters):
-            l2 = cluster[0]
-            if _axdiff(line[0], l2[0], not_axis) < dist:
-                clusters[i].append(line)
-                break
-        clusters.append([line])
-
-    return clusters
 
 
 def _get_cluster_extents(cluster):
@@ -264,12 +264,10 @@ def _join_lines(lines, axis, on_dist=10):
 
     while True:
         flag = False
-        #for i, a in enumerate(lines):
         for i in range(start, len(lines)):
             if flag:
                 break
             a = lines[i]
-            #for j, b in enumerate(lines):
             for j in range(start, len(lines)):
                 if i == j:
                     continue
@@ -321,4 +319,3 @@ def _axdiff(pa, pb, axis):
     :return:
     """
     return abs(pa[axis] - pb[axis])
-
