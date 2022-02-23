@@ -63,7 +63,7 @@ def check_column_quality(data_gt, data_scan):
 
     while len(column_centers_scan):
         center_scan = column_centers_scan.pop()
-        center_dims = column_dims_scan.pop()
+        dims_scan = column_dims_scan.pop()
         best_id = -1
         best_dist = -1
         for i, center_gt in enumerate(column_centers_gt):
@@ -74,8 +74,8 @@ def check_column_quality(data_gt, data_scan):
         if best_id == -1 or best_dist > 1000:
             continue
         column_diffs_cs_offset = np.append(column_diffs_cs_offset, best_dist)
-        column_diffs_length = np.append(column_diffs_length, abs(center_dims[2] - column_dims_gt[best_id][2]))
-        column_diffs_cs_size = np.append(column_diffs_cs_size, abs(center_dims[0] - column_dims_gt[best_id][0]) + abs(center_dims[1] - column_dims_gt[best_id][1]))
+        column_diffs_length = np.append(column_diffs_length, abs(dims_scan[2] - column_dims_gt[best_id][2]))
+        column_diffs_cs_size = np.append(column_diffs_cs_size, abs(dims_scan[0] - column_dims_gt[best_id][0]) + abs(dims_scan[1] - column_dims_gt[best_id][1]))
         del column_centers_gt[best_id]
         del column_dims_gt[best_id]
 

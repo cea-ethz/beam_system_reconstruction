@@ -19,6 +19,7 @@ import ui
 import util_graph
 import util_cloud
 
+# TODO : Add extensions everywhere, not just hough
 # TODO : Quality check graph diff
 # TODO : Autocrop for chamfer distance
 # X Percentage of found elements / missed count?
@@ -135,6 +136,12 @@ def main():
     primary_id = int(beam_layers[0].mean_spacing < beam_layers[1].mean_spacing)
     beam_layer_primary = beam_layers[primary_id]
     beam_layer_secondary = analysis_beams.perform_beam_splits(beam_layers[primary_id], beam_layers[int(not primary_id)])
+
+    for beam in beam_layer_primary.beams:
+        beam.fix_height(pc_main, 1)
+
+    for beam in beam_layer_secondary.beams:
+        beam.fix_height(pc_main, 0)
 
     print("Primary Beams : {}".format(len(beam_layer_primary.beams)))
     print("Secondary Beams : {}".format(len(beam_layer_secondary.beams)))

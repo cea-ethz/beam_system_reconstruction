@@ -117,6 +117,30 @@ class Beam(Geometry):
 
         return beam_a, beam_b
 
+    def fix_height(self, world_pc, axis):
+        min_bound = self.aabb.get_min_bound()
+        max_bound = self.aabb.get_max_bound()
+        extent = self.aabb.get_extent()
+
+        if extent[axis] <= 300:
+            return
+
+        min_bound[axis] += 150
+        max_bound[axis] -= 150
+        aabb_temp = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+        cloud_temp = world_pc.crop(aabb_temp)
+        points_temp = np.asarray(cloud_temp.points)
+        if len(points_temp) == 0:
+            return
+        z_min = np.min(points_temp[:, 2])
+        z_max = np.max(points_temp[:, 2])
+
+        min_bound = self.aabb.get_min_bound()
+        max_bound = self.aabb.get_max_bound()
+        min_bound[2] = z_min
+        max_bound[2] = z_max
+        self.aabb = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
+
 
 class Column(Geometry):
     def __init__(self, center):
