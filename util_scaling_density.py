@@ -21,7 +21,7 @@ def compute_scaling_density(points, name):
     points[:, 1] = img_shape[0] - points[:, 1]
 
     factor_a = 40
-    factor_b = 100
+    factor_b = 200
 
     scale_a = _get_level(points, factor_a, img_shape)
     count_a = np.count_nonzero(scale_a == 255) * factor_a * factor_a
@@ -32,6 +32,8 @@ def compute_scaling_density(points, name):
     cv2.imwrite(ui.dir_output + "scaling_density/" + name + "_b.png", scale_b)
 
     #timer.end("density")
+
+    print(f"Density : {count_a / count_b}")
 
     return count_a / count_b
 

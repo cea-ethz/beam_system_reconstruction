@@ -9,6 +9,12 @@ class Geometry:
         self.id = Geometry.geometry_id_counter
         Geometry.geometry_id_counter += 1
 
+    def get_density(self):
+        if self.cloud:
+            return len(self.cloud.points) / self.aabb.volume()
+        else:
+            return 0
+
 
 class Collision:
     def __init__(self, a, b, precedence):

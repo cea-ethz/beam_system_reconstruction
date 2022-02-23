@@ -167,6 +167,7 @@ def main():
 
     # Export cross sections
     for beam in beam_layer_primary.beams:
+        continue
         if beam.cloud is None:
             continue
         points = np.array(beam.cloud.points)
@@ -187,14 +188,14 @@ def main():
     for column_slice_position in column_slice_positions:
         pc_column = util_cloud.get_slice(pc_main, aabb_main, 2, column_slice_position, 1000, normalized=False)
         aabb_column = pc_column.get_axis_aligned_bounding_box()
-        ui.vis.add_geometry(pc_column)
+        # ui.vis.add_geometry(pc_column)
         z_min = floor_levels[0] + 50 if len(floor_levels) else aabb_main.get_min_bound()[2]
-        z_extents = (z_min, beam_layer_primary.average_z)
+        z_extents = [z_min, beam_layer_primary.average_z]
         columns += analysis_columns.analyze_columns(pc_column, aabb_column, pc_main, aabb_main, beam_layer_primary.beams, z_extents)
 
     if settings.read("visibility.columns_final"):
         for column in columns:
-            ui.vis.add_geometry(column.pc)
+            #ui.vis.add_geometry(column.pc)
             column.aabb.color = (1, 0.5, 0)
             ui.vis.add_geometry(column.aabb)
 

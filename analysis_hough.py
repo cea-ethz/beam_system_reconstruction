@@ -37,6 +37,7 @@ def analyze_by_hough_transform(pc, aabb, name="_"):
     cv2.imwrite(dir_hough + name + "_accumulator_raw.png", accumulator)
 
     ret, accumulator = cv2.threshold(accumulator, 22, 255, cv2.THRESH_BINARY)
+
     cv2.imwrite(dir_hough + name + "_accumulator_threshold.png", accumulator)
 
     output_raw = cv2.cvtColor(accumulator, cv2.COLOR_GRAY2BGR)
@@ -101,6 +102,28 @@ def analyze_by_hough_transform(pc, aabb, name="_"):
     for cluster in clusters_v:
         if beam := _cluster_to_beam(cluster, scale, aabb, 1):
             layer_v.add_beam(beam)
+
+    std_mult = 3
+    eps = np.finfo(float).eps
+    density_h = []
+    for beam in layer_h.beams:
+        beam.cloud = pc.crop(beam.aabb)
+        density_h.append(beam.get_density())
+    density_h = np.array(density_h)
+    std_h = np.std(density_h)
+    avg_h = np.mean(density_h)
+    median_h = np.median(density_h)
+    layer_h.beams = [beam for beam in layer_h.beams if median_h / (beam.get_density() + eps) < 10]
+    #print(layer_h.beams)
+    print(density_h)
+    print(std_h)
+    print(avg_h)
+
+
+    density_v = []
+    for beam in layer_v.beams:
+        beam.cloud = pc.crop(beam.aabb)
+        density_v.append(beam.get_density())
 
     print(f"Initial H Count : {len(layer_h.beams)}")
     print(f"Initial V Count : {len(layer_v.beams)}")

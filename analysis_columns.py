@@ -52,6 +52,9 @@ def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams, z_extents):
                     column = Column(aabb_subcloud.get_center())
                     column.child_beams.append(beam)
                     output_columns.append(column)
+                    #beam_center = beam.aabb.get_center()
+                    beam_min = beam.aabb.get_min_bound()
+                    z_extents[1] = beam_min[2] + 1
                     break
 
     # Calculate final cloud and aabb

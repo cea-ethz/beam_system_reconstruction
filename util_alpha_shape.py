@@ -12,6 +12,7 @@ def analyze_alpha_shape_density2(points, density=0.75, name="alpha"):
     """
     Analyzes the 'density' of a point cloud, to discern a cloud with smoothly spread out points vs locally clustered
     points, regardless of total point count. This is to discern beam grids from floors and walls.
+    Has been replaced by util_scaling_density due to optimization reasons
 
     :param points:
     :param density:

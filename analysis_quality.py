@@ -3,6 +3,7 @@ import math
 import numpy as np
 import open3d.cpu.pybind.geometry
 
+import settings
 import ui
 import util_cloud
 
@@ -51,9 +52,9 @@ def check_element_counts(data_gt, data_scan):
 
 
 def check_column_quality(data_gt, data_scan):
-    column_diffs_cs_offset = []
-    column_diffs_cs_size = []
-    column_diffs_length = []
+    column_diffs_cs_offset = np.array([])
+    column_diffs_cs_size = np.array([])
+    column_diffs_length = np.array([])
     column_centers_gt = _get_column_centers(data_gt)
     column_centers_scan = _get_column_centers(data_scan)
 
@@ -72,45 +73,53 @@ def check_column_quality(data_gt, data_scan):
                 best_dist = dist
         if best_id == -1 or best_dist > 1000:
             continue
-        column_diffs_cs_offset.append(best_dist)
-        column_diffs_length.append(abs(center_dims[2] - column_dims_gt[best_id][2]))
-        column_diffs_cs_size.append(abs(center_dims[0] - column_dims_gt[best_id][0]) + abs(center_dims[1] - column_dims_gt[best_id][1]))
+        column_diffs_cs_offset = np.append(column_diffs_cs_offset, best_dist)
+        column_diffs_length = np.append(column_diffs_length, abs(center_dims[2] - column_dims_gt[best_id][2]))
+        column_diffs_cs_size = np.append(column_diffs_cs_size, abs(center_dims[0] - column_dims_gt[best_id][0]) + abs(center_dims[1] - column_dims_gt[best_id][1]))
         del column_centers_gt[best_id]
         del column_dims_gt[best_id]
 
-    column_cs_offset_average = _avg(column_diffs_cs_offset)
-    column_cs_size_average = _avg(column_diffs_cs_size)
-    column_length_average = _avg(column_diffs_length)
+    fn = _avg if settings.read("analysis.mean_quality_analysis") else _median
+
+    column_cs_offset_average = fn(column_diffs_cs_offset)
+    column_cs_size_average = fn(column_diffs_cs_size)
+    column_length_average = fn(column_diffs_length)
 
     return column_cs_offset_average, column_cs_size_average, column_length_average
 
 
 def check_beam_quality(data_gt, data_scan):
-    beam_diffs_cs_offsets = []
-    beam_diffs_cs_size = []
-    beam_diffs_length = []
+    beam_diffs_cs_offsets = np.array([])
+    beam_diffs_cs_size = np.array([])
+    beam_diffs_length = np.array([])
 
     new_offsets, new_cs, new_lengths = _get_beam_layer_diffs(data_gt, data_scan, 0)
-    beam_diffs_cs_offsets += new_offsets
-    beam_diffs_cs_size += new_cs
-    beam_diffs_length += new_lengths
+    beam_diffs_cs_offsets = np.append(beam_diffs_cs_offsets, new_offsets)
+    beam_diffs_cs_size = np.append(beam_diffs_cs_size, new_cs)
+    beam_diffs_length = np.append(beam_diffs_length, new_lengths)
     new_offsets, new_cs, new_lengths = _get_beam_layer_diffs(data_gt, data_scan, 1)
-    beam_diffs_cs_offsets += new_offsets
-    beam_diffs_cs_size += new_cs
-    beam_diffs_length += new_lengths
+    beam_diffs_cs_offsets = np.append(beam_diffs_cs_offsets, new_offsets)
+    beam_diffs_cs_size = np.append(beam_diffs_cs_size, new_cs)
+    beam_diffs_length = np.append(beam_diffs_length, new_lengths)
 
-    #print(beam_diffs_length)
-    #print(beam_diffs_cs_size)
+    fn = _avg if settings.read("analysis.mean_quality_analysis") else _median
 
-    beam_cs_offset_average = _avg(beam_diffs_cs_offsets)
-    beam_cs_size_average = _avg(beam_diffs_cs_size)
-    beam_length_diff_average = _avg(beam_diffs_length)
+    beam_cs_offset_average = fn(beam_diffs_cs_offsets)
+    beam_cs_size_average = fn(beam_diffs_cs_size)
+    beam_length_diff_average = fn(beam_diffs_length)
     return beam_cs_offset_average, beam_cs_size_average, beam_length_diff_average
 
 
 def _avg(data):
     if len(data) > 0:
         return sum(data) / len(data)
+    else:
+        return np.NaN
+
+
+def _median(data):
+    if len(data) > 0:
+        return np.median(data)
     else:
         return np.NaN
 

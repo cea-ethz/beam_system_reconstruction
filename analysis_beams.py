@@ -109,7 +109,7 @@ def _analyze_z_level(pc, aabb, peak):
 
     beam_layers = []
 
-    #if not util_alpha_shape.analyze_alpha_shape_density2(alpha_points, 0.5, "floor_{}.png".format(peak)):
+    #if not util_alpha_shape.analyze_alpha_shape_density2(alpha_points, 0.55, "floor_{}.png".format(peak)):
     if util_scaling_density.compute_scaling_density(alpha_points, "floor_{}".format(peak)) < 0.5:
         # Plot X and Y histograms
         if layer := _analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, properties_x, bin_count_x):
@@ -156,7 +156,8 @@ def _analyze_beam_system_layer(pc, aabb, axis, hist, peaks, properties, source_b
         aabb_he = beam_aabb.get_half_extent()
 
         # Drop false positives that are obviously overwide
-        if aabb_e[axis] > 1000:
+        # TODO: Necessary operation but not generalizable
+        if aabb_e[axis] > 500:
             continue
 
         beam_slice_points = np.array(beam_slice.points)
