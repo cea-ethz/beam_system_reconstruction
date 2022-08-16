@@ -29,27 +29,29 @@ def get_edge_id(dg, a, b):
     return None
 
 
-def simplify_position(dg, pos, node_ids):
+def simplify_position(dg, pos, node_ids, vertical):
+    dir = 1 if vertical else 0
 
     for nid in node_ids:
         edges = dg.out_edges(nid)
-        y = [pos[n[1]][1] for n in edges]
-        if len(y):
-            pos[nid][1] = sum(y) / len(y)
+        coord = [pos[n[1]][dir] for n in edges]
+        if len(coord):
+            pos[nid][dir] = sum(coord) / len(coord)
         else:
-            pos[nid][1] = - 10
+            pos[nid][dir] = - 10
     return pos
 
 
-def normalize_position(dg, pos, node_ids):
-    y = np.array([pos[nid][1] for nid in node_ids])
-    args = np.argsort(y)
+def normalize_position(dg, pos, node_ids, vertical):
+    dir = 1 if vertical else 0
+    coord = np.array([pos[nid][dir] for nid in node_ids])
+    args = np.argsort(coord)
 
     if len(node_ids) - 1 == 0:
         return pos
 
     for i, arg_id in enumerate(args):
         n = 1.0 * i / (len(node_ids) - 1)
-        pos[node_ids[arg_id]][1] = n * 2 - 1
+        pos[node_ids[arg_id]][dir] = n * 2 - 1
 
     return pos

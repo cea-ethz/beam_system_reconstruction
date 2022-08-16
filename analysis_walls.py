@@ -3,6 +3,7 @@ import open3d as o3d
 import numpy as np
 import scipy.signal as signal
 
+import main
 import settings
 import ui
 import util_alpha_shape
@@ -66,9 +67,12 @@ def handle_peak(pc, aabb, peak, hist, bin_count, axis):
 
     #if util_alpha_shape.analyze_alpha_shape_density2(interior_points, settings.read("tuning.wall_fill_cutoff"), "wall_{}_{}.png".format(axis,peak)):
     if util_scaling_density.compute_scaling_density(interior_points, "wall_{}_{}".format(axis, peak)) > settings.read("tuning.wall_fill_cutoff"):
-        interior.paint_uniform_color((1, 0, 1))
+        #interior.paint_uniform_color((0.5,0.5,0.5))
+        interior.paint_uniform_color(main.color_wall)
         if settings.read("visibility.walls_extracted"):
-            ui.vis.add_geometry(interior)
+            #ui.vis.add_geometry(interior)
+            aabb = interior.get_axis_aligned_bounding_box()
+            main.add_mesh_from_aabb(aabb,main.color_wall)
         return exterior
     else:
         return pc

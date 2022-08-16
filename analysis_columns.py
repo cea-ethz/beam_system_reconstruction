@@ -33,6 +33,7 @@ def analyze_columns(pc, aabb, pc_main, aabb_main, primary_beams, z_extents):
 
     for subcloud in subclouds:
         aabb_subcloud = subcloud.get_axis_aligned_bounding_box()
+        aabb_subcloud.color = (1,0,0)
         extent = aabb_subcloud.get_extent()
         extent_max = max(extent[0], extent[1])
         extent_min = min(extent[0], extent[1])

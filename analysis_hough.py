@@ -31,7 +31,7 @@ def analyze_by_hough_transform(pc, aabb, name="_"):
     if not os.path.exists(dir_hough):
         os.makedirs(dir_hough)
 
-    scale = 8
+    scale = 16
 
     accumulator = cloud_to_accumulator(np.array(pc.points), scale)
     cv2.imwrite(dir_hough + name + "_accumulator_raw.png", accumulator)
