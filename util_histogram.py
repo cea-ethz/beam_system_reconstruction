@@ -4,6 +4,8 @@ Utilities for processing histogram data
 
 import numpy as np
 
+import ui
+
 color_back = 'gray'
 color_back_highlight = 'cyan'
 color_front = 'C0'
@@ -82,11 +84,18 @@ def get_peak_slice_params(hist, peak, diff=0.1):
     return position, width
 
 
-def render_bar(ax, hist_a, hist_b, peaks):
+def render_bar(ax, hist_a, hist_b, peaks, rename_ticks=True):
     bar_list_b = ax.bar(range(len(hist_b)), hist_b, color=color_back, width=1)
     #bar_list_a = ax.bar(range(len(hist_a)), hist_a, color=color_front, width=1)
     mean_b = np.mean(hist_b)
     #ax.axhline(mean_b, color='orange')
+
+    if rename_ticks:
+        ui.fig.canvas.draw()
+        #labels = [item.get_text().replace(u'\u8722', '-') for item in ax.get_xticklabels()]
+        labels = [item.get_text().replace(u'\u2212', '-') for item in ax.get_xticklabels()]
+        labels = [s if s == '' else str(float(s) * 50 / 1000) for s in labels]
+        ax.set_xticklabels(labels)
 
     for peak in peaks:
         bar_list_b[peak].set_color(color_back_highlight)

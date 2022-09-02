@@ -110,7 +110,7 @@ def _analyze_z_level(pc, aabb, peak):
     beam_layers = []
 
     #if not util_alpha_shape.analyze_alpha_shape_density2(alpha_points, 0.55, "floor_{}.png".format(peak)):
-    if util_scaling_density.compute_scaling_density(alpha_points, "floor_{}".format(peak)) < 0.5:
+    if util_scaling_density.compute_scaling_density(alpha_points, "floor_{}".format(peak)) < 0.6:
         # Plot X and Y histograms
         if layer := _analyze_beam_system_layer(pc, aabb, 0, hist_x_smooth, peaks_x, properties_x, bin_count_x):
             util_histogram.render_bar(ui.axs[1, 1], hist_x, hist_x_smooth, peaks_x)
@@ -251,7 +251,7 @@ def analyze_beam_connections(primary_layer, secondary_layer, DG):
     for sb in secondary_layer.beams:
         for pb in primary_layer.beams:
             if sb.check_overlap(pb):
-                DG.add_edges_from([(sb.id, pb.id)])
+                DG.add_edges_from([(pb.id, sb.id)])
 
     # Set node_layers
     for pb in primary_layer.beams:

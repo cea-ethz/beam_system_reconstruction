@@ -33,8 +33,8 @@ def simplify_position(dg, pos, node_ids, vertical):
     dir = 1 if vertical else 0
 
     for nid in node_ids:
-        edges = dg.out_edges(nid)
-        coord = [pos[n[1]][dir] for n in edges]
+        edges = dg.in_edges(nid)
+        coord = [pos[n[0]][dir] for n in edges]
         if len(coord):
             pos[nid][dir] = sum(coord) / len(coord)
         else:

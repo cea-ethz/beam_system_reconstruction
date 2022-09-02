@@ -31,7 +31,7 @@ from LineMesh import LineMesh
 
 settings.write("do_dag_highlighting", False)
 
-color_beam = (0.32,0.22,0.86)
+color_beam = (0.32, 0.22, 0.86)
 color_column = (0.23, 0.85,  0.83)
 color_wall = (0.63, 0.69, 0.54)
 
@@ -89,18 +89,18 @@ def main():
 
     # Setup histogram diagram
     px = 1 / plt.rcParams['figure.dpi']  # pixel in inches
-    fig, ui.axs = plt.subplots(2, 3, figsize=(1800 * px, 1200 * px))
+    ui.fig, ui.axs = plt.subplots(2, 3, figsize=(1800 * px, 1200 * px))
     plt.tight_layout(h_pad=3.0)
-    plt.subplots_adjust(left=0.05, bottom=0.10)
 
+    plt.subplots_adjust(left=0.05, bottom=0.10)
     plt.setp(ui.axs[0, 0], ylabel="Normalized Point Density")
-    plt.setp(ui.axs[0, 0], xlabel='Z Axis Bins')
-    plt.setp(ui.axs[0, 1], xlabel='X Axis Bins')
-    plt.setp(ui.axs[0, 2], xlabel='Y Axis Bins')
+    plt.setp(ui.axs[0, 0], xlabel='Z Position at Bin (m)')
+    plt.setp(ui.axs[0, 1], xlabel='X Position at Bin (m)')
+    plt.setp(ui.axs[0, 2], xlabel='Y Position at Bin (m)')
 
     plt.setp(ui.axs[1, 0], ylabel="Normalized Point Density")
-    plt.setp(ui.axs[1, 1], xlabel='X Axis Bins')
-    plt.setp(ui.axs[1, 2], xlabel='Y Axis Bins')
+    plt.setp(ui.axs[1, 1], xlabel='X Position at Bin (m)')
+    plt.setp(ui.axs[1, 2], xlabel='Y Position at Bin (m)')
 
     # Set Tuning Parameters Based on Cloud Size
     print("Setting Tuning Parameters Based on Cloud")
@@ -227,7 +227,7 @@ def main():
             out_line += ",{},{},{}".format(*column.aabb.get_extent())
             csv_scan.append(out_line)
 
-            ui.DG.add_edges_from([(column.child_beams[0].id, column.id)])
+            ui.DG.add_edges_from([(column.id,column.child_beams[0].id)])
             ui.DG.nodes[column.id]['layer'] = 0
             ui.DG.nodes[column.id]['source'] = 'column'
 
@@ -251,6 +251,10 @@ def main():
     for r in removal:
         ui.DG.remove_node(r)
 
+
+    #A = nx.adjacency_matrix(ui.DG).todense()
+    #print(A)
+
     # Create multipartite layout and reposition nodes for visibility
     pos = nx.multipartite_layout(ui.DG, 'layer', align='horizontal')
 
@@ -264,16 +268,25 @@ def main():
     pos = util_graph.simplify_position(ui.DG, pos, secondary_ids, False)
     pos = util_graph.normalize_position(ui.DG, pos, secondary_ids, False)
 
+    downstream_total = 0
+
     # Calculate downstream counts
     for column_id in column_ids:
         upstream, downstream = util_graph.get_stream_counts(ui.DG, column_id)
-        ui.DG.nodes[column_id]['stream'] = upstream
+        ui.DG.nodes[column_id]['stream'] = downstream
+        downstream_total += downstream
     for primary_id in primary_ids:
         upstream, downstream = util_graph.get_stream_counts(ui.DG, primary_id)
-        ui.DG.nodes[primary_id]['stream'] = upstream
+        ui.DG.nodes[primary_id]['stream'] = downstream
+        downstream_total += downstream
     for secondary_id in secondary_ids:
         upstream, downstream = util_graph.get_stream_counts(ui.DG, secondary_id)
-        ui.DG.nodes[secondary_id]['stream'] = upstream
+        ui.DG.nodes[secondary_id]['stream'] = downstream
+        downstream_total += downstream
+
+    print(f"Downstream Total : {downstream_total}")
+
+
 
     # Generate beam labels from downstream counts
     labels = nx.get_node_attributes(ui.DG, 'stream')

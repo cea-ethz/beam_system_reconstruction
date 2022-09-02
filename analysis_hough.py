@@ -9,9 +9,9 @@ import skimage.transform
 import settings
 import timer
 import ui
+import util_cloud
 
 from BIM_Geometry import Beam, BeamSystemLayer
-from util_cloud import cloud_to_accumulator
 
 
 def analyze_by_hough_transform(pc, aabb, name="_"):
@@ -33,7 +33,7 @@ def analyze_by_hough_transform(pc, aabb, name="_"):
 
     scale = 16
 
-    accumulator = cloud_to_accumulator(np.array(pc.points), scale)
+    accumulator = util_cloud.cloud_to_accumulator(np.array(pc.points), scale)
     cv2.imwrite(dir_hough + name + "_accumulator_raw.png", accumulator)
 
     ret, accumulator = cv2.threshold(accumulator, 22, 255, cv2.THRESH_BINARY)

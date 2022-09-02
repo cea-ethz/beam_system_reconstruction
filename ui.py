@@ -2,6 +2,8 @@ import networkx as nx
 
 vis = None
 
+fig = None
+
 axs = None
 
 input_cloud_filepath = None
