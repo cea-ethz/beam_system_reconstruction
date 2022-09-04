@@ -10,7 +10,12 @@ The basic idea is to create a cylinder for each line segment, translate it, and 
 
 License: MIT
 
+Original by JeremyBYU from https://github.com/isl-org/Open3D/pull/738
+
 """
+
+
+
 import numpy as np
 import open3d as o3d
 
